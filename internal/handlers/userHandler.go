@@ -75,6 +75,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 	if alreadyExists > 0 {
 		http.Error(w, "User already exists!", http.StatusConflict)
+		return
 	}
 
 	user.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))

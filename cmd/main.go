@@ -40,13 +40,14 @@ func main() {
 	})
 
 	// Question routes
-	// r.Route("/questions", func(r chi.Router) {
-	// 	questionHandler := handlers.NewQuestionHandler(db)
-	// 	r.Post("/", questionHandler.CreateQuestion)
-	// 	r.Get("/{id}", questionHandler.GetQuestion)
-	// 	r.Put("/{id}", questionHandler.UpdateQuestion)
-	// 	r.Delete("/{id}", questionHandler.DeleteQuestion)
-	// })
+	r.Route("/questions", func(r chi.Router) {
+
+		r.Post("/", handlers.CreateQuestion)
+		r.Get("/", handlers.GetQuestions)
+		r.Get("/{id}", handlers.GetQuestions)
+		// r.Put("/{id}", handlers.EditQuestion)
+		// r.Delete("/{id}", handlers.DeleteQuestion)
+	})
 
 	// Start the server
 	fmt.Println("Server is running on http://localhost:8080")
