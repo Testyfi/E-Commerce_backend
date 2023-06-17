@@ -29,9 +29,8 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	// r.Use(handlers.Authentication())
 
-	// Routes
+	// User Routes
 	r.Route("/users", func(r chi.Router) {
 		r.Get("/", handlers.GetUsers)
 		r.Post("/signup", handlers.SignUp)
@@ -44,9 +43,14 @@ func main() {
 
 		r.Post("/", handlers.CreateQuestion)
 		r.Get("/", handlers.GetQuestions)
-		r.Get("/{id}", handlers.GetQuestions)
+		r.Get("/{id}", handlers.GetQuestionByID)
 		// r.Put("/{id}", handlers.EditQuestion)
 		// r.Delete("/{id}", handlers.DeleteQuestion)
+	})
+
+	r.Route("/admins", func(r chi.Router) {
+		r.Get("/", handlers.GetAdmins)
+		r.Post("/create", handlers.CreateAdmin)
 	})
 
 	// Start the server

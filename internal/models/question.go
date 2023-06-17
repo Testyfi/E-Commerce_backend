@@ -1,8 +1,22 @@
 package models
 
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type Option struct {
+	text  string
+	image string
+}
 type Question struct {
-	Question string   `bson:"question"`
-	Images   []string `bson:"images"`
-	Type     int      `bson:"type"`
-	Options  []string `bson:"options"`
+	ID            primitive.ObjectID `bson:"_id"`
+	Question      string             `json:"questionText"`
+	Images        []string           `json:"images"`
+	Type          string             `json:"questionType"`
+	Options       []Option           `json:"options"`
+	CorrectAnswer string             `json:"correctAnswer"`
+	Created_at    time.Time          `bson:"created_at"`
+	Subject_Tags  []string           `json:"subjectTags"`
 }

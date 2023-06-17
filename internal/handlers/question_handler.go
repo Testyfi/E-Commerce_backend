@@ -3,12 +3,15 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	database "testify/database"
 	models "testify/internal/models"
 	"time"
 
+	"github.com/go-chi/chi"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -50,6 +53,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	if err := json.NewDecoder(r.Body).Decode(&question); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		print(err.Error())
 		return
 	}
 
@@ -57,17 +61,21 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	alreadyExists, err := questionCollection.CountDocuments(ctx, bson.M{"question": question.Question})
 	defer cancel()
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if alreadyExists > 0 {
 		http.Error(w, "Question already exists!", http.StatusConflict)
+		return
 	}
+
+	question.ID = primitive.NewObjectID()
+	question.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 
 	// Create the question in the database
 	insertResult, err := questionCollection.InsertOne(ctx, question)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer cancel()
@@ -76,6 +84,30 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(insertResult)
 	w.WriteHeader(http.StatusOK)
 	return
+}
+
+func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
+	questionID := chi.URLParam(r, "id")
+
+	question := models.Question{}
+	err := questionCollection.FindOne(
+		context.TODO(),
+		bson.D{{"_id", questionID}},
+	).Decode(&question)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "Question not found"+err.Error())
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error retrieving question")
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(question)
+
 }
 
 // func EditQuestion(w http.ResponseWriter, r *http.Request) {
