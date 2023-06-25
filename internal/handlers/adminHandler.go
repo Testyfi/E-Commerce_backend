@@ -35,7 +35,7 @@ func GetAdmins(w http.ResponseWriter, r *http.Request) {
 		var admin models.Admin
 		err := cur.Decode(&admin)
 		if err != nil {
-			http.Error(w, "Interal Server Error", http.StatusInternalServerError)
+			http.Error(w, "Interal Server Error"+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		admins = append(admins, admin)
