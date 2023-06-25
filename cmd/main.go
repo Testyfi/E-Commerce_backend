@@ -21,7 +21,7 @@ func main() {
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"http://localhost:4200", "https://testify-preview.onrender.com"},
+		AllowedOrigins: []string{"https://testify-admin.onrender.com", "https://testify-preview.onrender.com"},
 		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
@@ -51,6 +51,8 @@ func main() {
 	r.Route("/admins", func(r chi.Router) {
 		r.Get("/", handlers.GetAdmins)
 		r.Post("/create", handlers.CreateAdmin)
+		r.Post("/login", handlers.AdminLogin)
+		r.Post("/verify", handlers.VerifyAdminToken)
 	})
 
 	// Start the server

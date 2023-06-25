@@ -6,12 +6,18 @@ import (
 	"net/http"
 	database "testify/database"
 	models "testify/internal/models"
+	utility "testify/internal/utility"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+type Data struct {
+	Token     string `json:"token"`
+	AdminName string `json:"adminName"`
+}
 
 var adminCollection *mongo.Collection = database.OpenCollection(database.Client, "admin")
 
@@ -55,6 +61,10 @@ func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Password Hashing
+	password := HashPassword(*admin.Password)
+	admin.Password = &password
+
 	// Checking if admin already exists
 	alreadyExists, err := adminCollection.CountDocuments(ctx, bson.M{"email": admin.Email})
 	defer cancel()
@@ -69,6 +79,11 @@ func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 
 	admin.ID = primitive.NewObjectID()
 	admin.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	admin.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	admin.Admin_ID = admin.ID.Hex()
+	token, refreshToken, _ := utility.GenerateAllAdminTokens(*admin.Email, *admin.AdminName, admin.Admin_ID)
+	admin.Token = &token
+	admin.Refresh_token = &refreshToken
 
 	// Create the admin in the database
 	insertResult, err := adminCollection.InsertOne(ctx, admin)
@@ -80,6 +95,46 @@ func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(insertResult)
+	w.WriteHeader(http.StatusOK)
+	return
+}
+
+func AdminLogin(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	var foundAdmin models.Admin
+	var admin models.Admin
+	if err := json.NewDecoder(r.Body).Decode(&admin); err != nil {
+		http.Error(w, "Interal Server Error "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err := adminCollection.FindOne(ctx, bson.M{"email": admin.Email}).Decode(&foundAdmin)
+	defer cancel()
+	if err != nil {
+		http.Error(w, "Email or Password is incorrect", http.StatusUnauthorized)
+		return
+	}
+	passwordIsValid, msg := VerifyPassword(*admin.Password, *foundAdmin.Password)
+	defer cancel()
+	if passwordIsValid != true {
+		http.Error(w, msg, http.StatusUnauthorized)
+		return
+	}
+
+	token, refreshToken, _ := utility.GenerateAllAdminTokens(*foundAdmin.Email, *foundAdmin.AdminName, foundAdmin.Admin_ID)
+	utility.UpdateAllAdminTokens(token, refreshToken, foundAdmin.Admin_ID)
+
+	w.Header().Set("Content-Type", "application/json")
+	data := Data{
+		Token:     token,
+		AdminName: *foundAdmin.AdminName,
+	}
+	jsonResp, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(jsonResp)
 	w.WriteHeader(http.StatusOK)
 	return
 }

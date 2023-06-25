@@ -70,6 +70,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	question.ID = primitive.NewObjectID()
+	question.Q_id = question.ID.Hex()
 	question.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 
 	// Create the question in the database

@@ -16,4 +16,5 @@ type Admin struct {
 	Refresh_token *string            `json:"refresh_token"`
 	Created_at    time.Time          `json:"created_at"`
 	Updated_at    time.Time          `json:"updated_at"`
+	Admin_ID      string             `json:"admin_id"`
 }

@@ -19,4 +19,5 @@ type Question struct {
 	CorrectAnswer string             `json:"correctAnswer"`
 	Created_at    time.Time          `bson:"created_at"`
 	Subject_Tags  []string           `json:"subjectTags"`
+	Q_id          string             `json:"qid"`
 }
