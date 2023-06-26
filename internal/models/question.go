@@ -7,8 +7,8 @@ import (
 )
 
 type Option struct {
-	text  string
-	image string
+	Text  string `json:"text"`
+	Image string `json:"image"`
 }
 type Question struct {
 	ID            primitive.ObjectID `bson:"_id"`

@@ -36,7 +36,7 @@ func GetQuestions(w http.ResponseWriter, r *http.Request) {
 		}
 		questions = append(questions, question)
 	}
-	// Serialize questions to JSON
+
 	data, err := json.Marshal(questions)
 	if err != nil {
 		http.Error(w, "Failed to serialize questions", http.StatusInternalServerError)
@@ -89,11 +89,10 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 
 func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 	questionID := chi.URLParam(r, "id")
-
 	question := models.Question{}
 	err := questionCollection.FindOne(
-		context.TODO(),
-		bson.D{{"_id", questionID}},
+		ctx,
+		bson.M{"q_id": questionID},
 	).Decode(&question)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -108,6 +107,27 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(question)
+
+}
+
+func DeleteQuestion(w http.ResponseWriter, r *http.Request) {
+	questionID := chi.URLParam(r, "id")
+
+	result, err := questionCollection.DeleteOne(ctx, bson.M{"q_id": questionID})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error deleting question")
+		return
+	}
+
+	if result.DeletedCount == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "Question not found")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
 
 }
 
