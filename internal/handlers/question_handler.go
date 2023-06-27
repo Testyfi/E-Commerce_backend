@@ -131,37 +131,40 @@ func DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// func EditQuestion(w http.ResponseWriter, r *http.Request) {
-// 	// Get the question ID from the request parameters
-// 	id := chi.URLParam(r, "id")
+func EditQuestion(w http.ResponseWriter, r *http.Request) {
+	questionID := chi.URLParam(r, "id")
 
-// 	// Get the new question details from the request body
-// 	var updatedQuestion models.Question
-// 	if err := json.NewDecoder(r.Body).Decode(&updatedQuestion); err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
+	var updatedQuestion models.Question
+	err := json.NewDecoder(r.Body).Decode(&updatedQuestion)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Invalid request body")
+		return
+	}
 
-// 	// Retrieve the question from the database using the ID or any other unique identifier
-// 	question, err := database.GetQuestionByID(id)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
+	filter := bson.M{"q_id": questionID}
+	update := bson.M{"$set": bson.M{
+		"question":      updatedQuestion.Question,
+		"images":        updatedQuestion.Images,
+		"type":          updatedQuestion.Type,
+		"options":       updatedQuestion.Options,
+		"correctanswer": updatedQuestion.CorrectAnswer,
+		"subject_tags":  updatedQuestion.Subject_Tags,
+	}}
+	result, err := questionCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error updating question")
+		return
+	}
 
-// 	// Update the question details based on the new values
-// 	question.Question = updatedQuestion.Question
-// 	question.Type = updatedQuestion.Type
-// 	question.Options = updatedQuestion.Options
-// 	question.CorrectAnswer = updatedQuestion.CorrectAnswer
+	if result.ModifiedCount == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "Question not found")
+		return
+	}
 
-// 	// Save the updated question back to the database
-// 	err = db.UpdateQuestion(question)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-
-// 	// Return the updated question as a JSON response
-// 	json.NewEncoder(w).Encode(question)
-// }
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
