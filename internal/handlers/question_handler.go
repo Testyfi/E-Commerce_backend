@@ -138,6 +138,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&updatedQuestion)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
 		fmt.Fprintf(w, "Invalid request body")
 		return
 	}
@@ -165,6 +166,26 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func DeleteMany(w http.ResponseWriter, r *http.Request) {
+	var ids []string
+	err := json.NewDecoder(r.Body).Decode(&ids)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
+		fmt.Fprintf(w, "Invalid request body")
+		return
+	}
+	result, err := questionCollection.DeleteMany(ctx, bson.M{"q_id": bson.M{"$in": ids}})
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error deleting questions")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }

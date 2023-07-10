@@ -47,6 +47,7 @@ func main() {
 		r.Get("/{id}", handlers.GetQuestionByID)
 		r.Put("/{id}", handlers.EditQuestion)
 		r.Delete("/{id}", handlers.DeleteQuestion)
+		r.Post("/delete", handlers.DeleteMany)
 	})
 
 	r.Route("/admins", func(r chi.Router) {
