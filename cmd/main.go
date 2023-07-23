@@ -4,15 +4,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"testify/internal/handlers"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	r := chi.NewRouter()
 
 	// Middleware
@@ -21,9 +29,7 @@ func main() {
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		// AllowedOrigins: []string{"http://localhost:4200"},
-		AllowedOrigins: []string{"https://testify-admin.onrender.com", "https://testify-preview.onrender.com"},
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedOrigins:   []string{os.Getenv("STUDENT_FRONTEND_URL"), os.Getenv("ADMIN_FRONTEND_URL")},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -33,7 +39,6 @@ func main() {
 
 	// User Routes
 	r.Route("/users", func(r chi.Router) {
-		r.Get("/", handlers.GetUsers)
 		r.Post("/signup", handlers.SignUp)
 		r.Post("/login", handlers.Login)
 		r.Post("/delete", handlers.DeleteUser)
@@ -41,20 +46,23 @@ func main() {
 
 	// Question routes
 	r.Route("/questions", func(r chi.Router) {
-
+		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/", handlers.CreateQuestion)
 		r.Get("/", handlers.GetQuestions)
 		r.Get("/{id}", handlers.GetQuestionByID)
 		r.Put("/{id}", handlers.EditQuestion)
 		r.Delete("/{id}", handlers.DeleteQuestion)
 		r.Post("/delete", handlers.DeleteMany)
+		r.Post("/upload", handlers.UploadCSV)
 	})
 
+	r.Post("/adminlogin", handlers.AdminLogin)
 	r.Route("/admins", func(r chi.Router) {
+		r.Use(handlers.AdminAuthenticationMiddleware)
 		r.Get("/", handlers.GetAdmins)
+		r.Get("/users", handlers.GetUsers)
 		r.Post("/create", handlers.CreateAdmin)
-		r.Post("/login", handlers.AdminLogin)
-		r.Post("/verify", handlers.VerifyAdminToken)
+		r.Get("/verify", handlers.VerifyAdminToken)
 	})
 
 	// Start the server

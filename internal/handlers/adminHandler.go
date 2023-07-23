@@ -107,6 +107,7 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Interal Server Error "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	err := adminCollection.FindOne(ctx, bson.M{"email": admin.Email}).Decode(&foundAdmin)
 	defer cancel()
 	if err != nil {
@@ -136,5 +137,6 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 
 	w.Write(jsonResp)
 	w.WriteHeader(http.StatusOK)
+
 	return
 }

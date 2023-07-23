@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	database "testify/database"
 	models "testify/internal/models"
 	"time"
@@ -188,4 +191,97 @@ func DeleteMany(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+func UploadCSV(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	qFile, _, err := r.FormFile("questionCsvFile")
+	if err != nil {
+		http.Error(w, "Failed to retrieve the file", http.StatusBadRequest)
+		return
+	}
+	defer qFile.Close()
+
+	// Parse the CSV file
+	reader := csv.NewReader(qFile)
+	records, err := reader.ReadAll()
+	if err != nil {
+		http.Error(w, "Failed to parse the CSV file", http.StatusBadRequest)
+		return
+	}
+
+	mid := make(map[string]string)
+
+	// Insert CSV records in the database
+	for _, record := range records {
+
+		question := models.Question{
+			Question:      record[0],
+			Images:        strings.Split(record[1], ", "),
+			Type:          record[2],
+			Subject_Tags:  strings.Split(record[3], ", "),
+			Q_id:          record[4],
+			ID:            primitive.NewObjectID(),
+			CorrectAnswer: record[5],
+			Created_at:    time.Now(),
+			Options:       make([]models.Option, 0),
+		}
+		qid := question.ID.Hex()
+		mid[record[4]] = qid
+		question.Q_id = qid
+		// Checking if question already exists
+		alreadyExists, err := questionCollection.CountDocuments(ctx, bson.M{"question": question.Question})
+		defer cancel()
+		if err != nil {
+			http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if alreadyExists > 0 {
+			http.Error(w, "Question already exists!", http.StatusConflict)
+			return
+		}
+		// Inserting Question
+		_, err = questionCollection.InsertOne(ctx, question)
+		if err != nil {
+			http.Error(w, "Failed to insert record into the database", http.StatusInternalServerError)
+			return
+		}
+	}
+	optionFile, _, err := r.FormFile("optionCsvFile")
+	if err != nil {
+		http.Error(w, "Failed to retrieve the file", http.StatusBadRequest)
+		return
+	}
+	defer optionFile.Close()
+	reader = csv.NewReader(optionFile)
+	optionRecords, err := reader.ReadAll()
+	if err != nil {
+		http.Error(w, "Failed to parse the CSV file", http.StatusBadRequest)
+		return
+	}
+	for _, optionRecord := range optionRecords {
+
+		qid := optionRecord[2]
+		optionText := optionRecord[0]
+		optionImage := optionRecord[1]
+
+		// 	// Find the question in MongoDB by qid
+		filter := bson.M{"q_id": mid[qid]}
+		update := bson.M{
+			"$push": bson.M{"options": models.Option{
+				Text:  optionText,
+				Image: optionImage,
+			}},
+		}
+
+		_, err = questionCollection.UpdateOne(ctx, filter, update)
+		if err != nil {
+			log.Printf("Failed to update question with qid '%s': %v\n", qid, err)
+		} else {
+			log.Printf("Updated question with qid '%s'\n", qid)
+		}
+	}
+
+	// Return success response
+	w.WriteHeader(http.StatusOK)
 }
