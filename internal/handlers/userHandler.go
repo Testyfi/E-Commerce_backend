@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	database "testify/database"
@@ -16,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -152,7 +154,6 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid token", http.StatusBadRequest)
 		return
 	}
-	println("Email is " + email)
 
 	deleteResult, err := userCollection.DeleteOne(ctx, bson.M{"email": email})
 	if err != nil {
@@ -170,8 +171,25 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetUsers(w http.ResponseWriter, r *http.Request) {
+	pageSize, err := strconv.Atoi(r.URL.Query().Get("pageSize"))
+	if err != nil || pageSize <= 0 {
+		pageSize = 10 // default page size
+	}
+
+	pageIndex, err := strconv.Atoi(r.URL.Query().Get("pageIndex"))
+	if err != nil || pageIndex < 0 {
+		pageIndex = 0 // default page index
+	}
+
+	// Calculate the number of documents to skip
+	skip := pageIndex * pageSize
+
+	findOptions := options.Find()
+	findOptions.SetSkip(int64(skip))
+	findOptions.SetLimit(int64(pageSize))
+
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-	cur, err := userCollection.Find(ctx, bson.M{})
+	cur, err := userCollection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -188,14 +206,23 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		users = append(users, user)
 	}
-	// Serialize users to JSON
-	data, err := json.Marshal(users)
-	if err != nil {
-		http.Error(w, "Failed to serialize users", http.StatusInternalServerError)
+	if err := cur.Err(); err != nil {
+		http.Error(w, "Error fetching data", http.StatusInternalServerError)
 		return
+	}
+
+	totalUsers, err := userCollection.CountDocuments(context.Background(), bson.M{})
+	if err != nil {
+		http.Error(w, "Error fetching data", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with the questions and total number of questions
+	response := map[string]interface{}{
+		"users":      users,
+		"totalUsers": totalUsers,
 	}
 	// Set response headers and write the JSON response
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
-	return
+	json.NewEncoder(w).Encode(response)
 }
