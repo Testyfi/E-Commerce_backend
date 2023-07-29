@@ -11,6 +11,7 @@ import (
 	"strings"
 	database "testify/database"
 	models "testify/internal/models"
+	utility "testify/internal/utility"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -82,9 +83,16 @@ func GetQuestions(w http.ResponseWriter, r *http.Request) {
 func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	var question models.Question
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-	if err := json.NewDecoder(r.Body).Decode(&question); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		print(err.Error())
+
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		return
+	}
+	data := r.FormValue("data")
+	err = json.Unmarshal([]byte(data), &question)
+	if err != nil {
+		http.Error(w, "Failed to parse JSON data", http.StatusBadRequest)
 		return
 	}
 
@@ -103,6 +111,81 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	question.ID = primitive.NewObjectID()
 	question.Q_id = question.ID.Hex()
 	question.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+
+	questionImages := r.MultipartForm.File["questionImages"]
+	question.Images = []string{}
+	for i, fileHeader := range questionImages {
+		// Save the uploaded file to the "assets" directory
+		imageName := fmt.Sprintf("%s%d", question.Q_id, i)
+		err := utility.SaveImageToFile(fileHeader, imageName)
+		if err != nil {
+			http.Error(w, "Failed to save image", http.StatusInternalServerError)
+			return
+		}
+
+		// Update the Images array with the path to the saved image
+		question.Images = append(question.Images, imageName)
+	}
+
+	if question.Type == "Multiple Choice" {
+		optionAImage := r.MultipartForm.File["optionAImage"]
+		optionBImage := r.MultipartForm.File["optionBImage"]
+		optionCImage := r.MultipartForm.File["optionCImage"]
+		optionDImage := r.MultipartForm.File["optionDImage"]
+
+		// Process option A image
+		if len(optionAImage) > 0 {
+			fileHeader := optionAImage[0]
+			imagePath := fmt.Sprintf("%sA", question.ID.Hex())
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Failed to save option A image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option A Image field with the path to the saved image
+			question.Options[0].Image = imagePath
+		}
+
+		// Process option B image
+		if len(optionBImage) > 0 {
+			fileHeader := optionBImage[0]
+			imagePath := fmt.Sprintf("%sB", question.ID.Hex())
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option B image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option B Image field with the path to the saved image
+			question.Options[1].Image = imagePath
+		}
+
+		// Process option C image
+		if len(optionCImage) > 0 {
+			fileHeader := optionCImage[0]
+			imagePath := fmt.Sprintf("%sC", question.ID.Hex())
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option C image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option C Image field with the path to the saved image
+			question.Options[2].Image = imagePath
+		}
+
+		// Process option D image
+		if len(optionDImage) > 0 {
+			fileHeader := optionDImage[0]
+			imagePath := fmt.Sprintf("%sD", question.ID.Hex())
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option D image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option D Image field with the path to the saved image
+			question.Options[3].Image = imagePath
+		}
+	}
 
 	// Create the question in the database
 	insertResult, err := questionCollection.InsertOne(ctx, question)
@@ -163,15 +246,99 @@ func DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 }
 
 func EditQuestion(w http.ResponseWriter, r *http.Request) {
+
 	questionID := chi.URLParam(r, "id")
 
 	var updatedQuestion models.Question
-	err := json.NewDecoder(r.Body).Decode(&updatedQuestion)
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
+	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
 		fmt.Println(err)
-		fmt.Fprintf(w, "Invalid request body")
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
 		return
+	}
+	data := r.FormValue("data")
+
+	err = json.Unmarshal([]byte(data), &updatedQuestion)
+	if err != nil {
+		fmt.Println("Found error")
+		http.Error(w, "Failed to parse JSON data", http.StatusBadRequest)
+		return
+	}
+	utility.DeleteQuestionImagesByQID(questionID)
+	questionImages := r.MultipartForm.File["questionImages"]
+	updatedQuestion.Images = []string{}
+	for i, fileHeader := range questionImages {
+		// Save the uploaded file to the "assets" directory
+		imageName := fmt.Sprintf("%s%d", questionID, i)
+		err := utility.SaveImageToFile(fileHeader, imageName)
+		if err != nil {
+			http.Error(w, "Failed to save image", http.StatusInternalServerError)
+			return
+		}
+
+		// Update the Images array with the path to the saved image
+		updatedQuestion.Images = append(updatedQuestion.Images, imageName)
+	}
+
+	if updatedQuestion.Type == "Multiple Choice" {
+		optionAImage := r.MultipartForm.File["optionAImage"]
+		optionBImage := r.MultipartForm.File["optionBImage"]
+		optionCImage := r.MultipartForm.File["optionCImage"]
+		optionDImage := r.MultipartForm.File["optionDImage"]
+
+		// Process option A image
+		if len(optionAImage) > 0 {
+			fileHeader := optionAImage[0]
+			imagePath := fmt.Sprintf("%sA", questionID)
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option A image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option A Image field with the path to the saved image
+			updatedQuestion.Options[0].Image = imagePath
+		}
+
+		// Process option B image
+		if len(optionBImage) > 0 {
+			fileHeader := optionBImage[0]
+			imagePath := fmt.Sprintf("%sB", questionID)
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option B image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option B Image field with the path to the saved image
+			updatedQuestion.Options[1].Image = imagePath
+		}
+
+		// Process option C image
+		if len(optionCImage) > 0 {
+			fileHeader := optionCImage[0]
+			imagePath := fmt.Sprintf("%sC", questionID)
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option C image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option C Image field with the path to the saved image
+			updatedQuestion.Options[2].Image = imagePath
+		}
+
+		// Process option D image
+		if len(optionDImage) > 0 {
+			fileHeader := optionDImage[0]
+			imagePath := fmt.Sprintf("%sD", questionID)
+			err := utility.SaveImageToFile(fileHeader, imagePath)
+			if err != nil {
+				http.Error(w, "Failed to save option D image", http.StatusInternalServerError)
+				return
+			}
+			// Update the Option D Image field with the path to the saved image
+			updatedQuestion.Options[3].Image = imagePath
+		}
 	}
 
 	filter := bson.M{"q_id": questionID}
@@ -183,17 +350,11 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		"correctanswer": updatedQuestion.CorrectAnswer,
 		"subject_tags":  updatedQuestion.Subject_Tags,
 	}}
+
 	result, err := questionCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error updating question")
-		return
-	}
-
-	if result.ModifiedCount == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "Question not found")
 		return
 	}
 
@@ -210,6 +371,12 @@ func DeleteMany(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Invalid request body")
 		return
 	}
+
+	// Iterate through the ids and delete the corresponding question images
+	for _, qid := range ids {
+		utility.DeleteQuestionImagesByQID(qid)
+	}
+
 	result, err := questionCollection.DeleteMany(ctx, bson.M{"q_id": bson.M{"$in": ids}})
 	if err != nil {
 		fmt.Println(err)

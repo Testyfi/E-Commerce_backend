@@ -44,13 +44,15 @@ func main() {
 		r.Post("/delete", handlers.DeleteUser)
 	})
 
+	r.Get("/image/{image}", handlers.ServeImage)
+
 	// Question routes
 	r.Route("/questions", func(r chi.Router) {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/", handlers.CreateQuestion)
 		r.Get("/", handlers.GetQuestions)
-		r.Get("/{id}", handlers.GetQuestionByID)
-		r.Put("/{id}", handlers.EditQuestion)
+		r.Get("/id/{id}", handlers.GetQuestionByID)
+		r.Put("/id/{id}", handlers.EditQuestion)
 		r.Delete("/{id}", handlers.DeleteQuestion)
 		r.Post("/delete", handlers.DeleteMany)
 		r.Post("/upload", handlers.UploadCSV)

@@ -20,14 +20,15 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 		if errMsg != "" {
 			claims, errMsg := utility.ValidateAdminToken(tokenString)
 			if errMsg != "" {
+				println(claims)
 				http.Error(w, errMsg, http.StatusUnauthorized)
 				return
 			}
-			println(claims)
+
 			next.ServeHTTP(w, r)
 			return
 		}
-		println(claims)
+		errMsg = claims.Email
 		next.ServeHTTP(w, r)
 	})
 }

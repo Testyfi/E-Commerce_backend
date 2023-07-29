@@ -96,9 +96,10 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer cancel()
+	println(insertResult)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(insertResult)
+	json.NewEncoder(w).Encode(token)
 	w.WriteHeader(http.StatusOK)
 	return
 }
