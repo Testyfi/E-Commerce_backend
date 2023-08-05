@@ -13,6 +13,7 @@ import (
 	models "testify/internal/models"
 	utility "testify/internal/utility"
 
+	"github.com/go-chi/chi"
 	"github.com/go-playground/validator"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -84,6 +85,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 	user.ID = primitive.NewObjectID()
 	user.User_id = user.ID.Hex()
+	user.QuestionPapers = make(map[string]map[string]string, 0)
 
 	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
@@ -226,4 +228,100 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	// Set response headers and write the JSON response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func SubmitQPaper(w http.ResponseWriter, r *http.Request) {
+	paperID := chi.URLParam(r, "paper_id")
+	userID := chi.URLParam(r, "user_id")
+
+	var user models.User
+	err := userCollection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(&user)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	m := make(map[string]string)
+	err = json.NewDecoder(r.Body).Decode(&m)
+	if err != nil {
+		http.Error(w, "Error decoding JSON data", http.StatusBadRequest)
+		return
+	}
+	user.QuestionPapers[paperID] = m
+	fmt.Println(user)
+
+	filter := bson.M{"user_id": userID}
+	update := bson.M{"$set": bson.M{
+		"questionPapers": user.QuestionPapers,
+	}}
+
+	result, err := userCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error updating question")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func GetPaperStats(w http.ResponseWriter, r *http.Request) {
+	paperID := chi.URLParam(r, "paper_id")
+	userID := chi.URLParam(r, "user_id")
+
+	var user models.User
+	err := userCollection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(&user)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	userChoices, found := user.QuestionPapers[paperID]
+	if found {
+		var PaperStats []QuestionStat
+		for qid, userAns := range userChoices {
+			var qStat QuestionStat
+			var question models.Question
+			qStat.QuestionID = qid
+			qStat.UserAnswer = userAns
+			err := questionCollection.FindOne(
+				ctx,
+				bson.M{"q_id": qid},
+			).Decode(&question)
+			if err != nil {
+				if err == mongo.ErrNoDocuments {
+					w.WriteHeader(http.StatusNotFound)
+					fmt.Fprintf(w, "Question not found"+err.Error())
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+					fmt.Fprintf(w, "Error retrieving question")
+					fmt.Println(err)
+				}
+				return
+			}
+			qStat.CorrectAnswer = question.CorrectAnswer
+			qStat.QuestionText = question.Question
+			qStat.MarksObtained = 0
+			if qStat.CorrectAnswer == qStat.UserAnswer {
+				qStat.MarksObtained = 4
+			}
+			PaperStats = append(PaperStats, qStat)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(PaperStats)
+	} else {
+		http.Error(w, "You have not attempted this Question Paper", http.StatusNotFound)
+		return
+	}
+}
+
+// Define QuestionStat struct to hold question statistics.
+type QuestionStat struct {
+	QuestionID    string
+	QuestionText  string
+	UserAnswer    string
+	CorrectAnswer string
+	MarksObtained int
 }

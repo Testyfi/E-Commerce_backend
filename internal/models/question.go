@@ -21,3 +21,9 @@ type Question struct {
 	Subject_Tags  []string           `json:"subjectTags"`
 	Q_id          string             `json:"qid"`
 }
+
+type QPaper struct {
+	ID        primitive.ObjectID `bson:"_id"`
+	Qpid      string             `json:"qpid"`
+	Questions []string           `json:"questions"`
+}

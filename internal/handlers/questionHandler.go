@@ -22,6 +22,7 @@ import (
 )
 
 var questionCollection *mongo.Collection = database.OpenCollection(database.Client, "question")
+var qpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "qpaper")
 
 func GetQuestions(w http.ResponseWriter, r *http.Request) {
 	pageSize, err := strconv.Atoi(r.URL.Query().Get("pageSize"))
@@ -479,4 +480,28 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 	// Return success response
 	w.WriteHeader(http.StatusOK)
+}
+
+func CreateQPaper(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	var qpaper models.QPaper
+	if err := json.NewDecoder(r.Body).Decode(&qpaper); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	qpaper.ID = primitive.NewObjectID()
+	qpaper.Qpid = qpaper.ID.Hex()
+
+	insertResult, err := qpaperCollection.InsertOne(ctx, qpaper)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer cancel()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(insertResult)
+	w.WriteHeader(http.StatusOK)
+	return
 }

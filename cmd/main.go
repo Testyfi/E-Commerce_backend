@@ -38,10 +38,13 @@ func main() {
 	}))
 
 	// User Routes
+	r.Post("/userlogin", handlers.Login)
+	r.Post("/usersignup", handlers.SignUp)
 	r.Route("/users", func(r chi.Router) {
-		r.Post("/signup", handlers.SignUp)
-		r.Post("/login", handlers.Login)
+		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/delete", handlers.DeleteUser)
+		r.Get("/stats/{user_id}/{paper_id}", handlers.GetPaperStats)
+		r.Post("/submit/user/{user_id}/paper/{paper_id}", handlers.SubmitQPaper)
 	})
 
 	r.Get("/image/{image}", handlers.ServeImage)
@@ -56,6 +59,7 @@ func main() {
 		r.Delete("/{id}", handlers.DeleteQuestion)
 		r.Post("/delete", handlers.DeleteMany)
 		r.Post("/upload", handlers.UploadCSV)
+		r.Post("/createpaper", handlers.CreateQPaper)
 	})
 
 	r.Post("/adminlogin", handlers.AdminLogin)
