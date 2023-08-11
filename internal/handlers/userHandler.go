@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -26,6 +27,24 @@ var validate = validator.New()
 var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 var user models.User
 var userCollection *mongo.Collection = database.OpenCollection(database.Client, "user")
+
+type QuestionStat struct {
+	QuestionID    string `json:"qid"`
+	QuestionText  string `json:"question"`
+	UserAnswer    string `json:"user_answer"`
+	CorrectAnswer string `json:"correct_answer"`
+	MarksObtained int    `json:"marks_obtained"`
+}
+
+type SignInData struct {
+	User_ID        string `json:"user_id"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	Email          string `json:"email"`
+	Phone          string `json:"phone"`
+	Token          string `json:"token"`
+	ProfilePicture string `json:"profile_picture"`
+}
 
 // HashPassword is used to encrypt the password before it is stored in the DB
 func HashPassword(password string) string {
@@ -54,6 +73,7 @@ func VerifyPassword(userPassword string, providedPassword string) (bool, string)
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		fmt.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -86,6 +106,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.ID = primitive.NewObjectID()
 	user.User_id = user.ID.Hex()
 	user.QuestionPapers = make(map[string]map[string]string, 0)
+	user.Profile = "https://static.vecteezy.com/system/resources/previews/005/544/718/original/profile-icon-design-free-vector.jpg"
 
 	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
@@ -101,9 +122,23 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	println(insertResult)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(token)
+	data := SignInData{
+		Token:          token,
+		User_ID:        user.User_id,
+		FirstName:      *user.First_name,
+		LastName:       *user.Last_name,
+		Email:          *user.Email,
+		Phone:          *user.Phone,
+		ProfilePicture: user.Profile,
+	}
+	jsonResp, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonResp)
 	w.WriteHeader(http.StatusOK)
-	return
+
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +165,21 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	utility.UpdateAllTokens(token, refreshToken, foundUser.User_id)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(token)
+	data := SignInData{
+		Token:          token,
+		User_ID:        foundUser.User_id,
+		FirstName:      *foundUser.First_name,
+		LastName:       *foundUser.Last_name,
+		Email:          *foundUser.Email,
+		Phone:          *foundUser.Phone,
+		ProfilePicture: foundUser.Profile,
+	}
+	jsonResp, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonResp)
 	w.WriteHeader(http.StatusOK)
 	return
 }
@@ -317,11 +366,37 @@ func GetPaperStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Define QuestionStat struct to hold question statistics.
-type QuestionStat struct {
-	QuestionID    string
-	QuestionText  string
-	UserAnswer    string
-	CorrectAnswer string
-	MarksObtained int
+func UpdateProfilePic(w http.ResponseWriter, r *http.Request) {
+	userId := chi.URLParam(r, "user_id")
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		return
+	}
+	profileImage := r.MultipartForm.File["profileImage"][0]
+	imageName := fmt.Sprintf("profile%s.jpg", userId)
+	err = utility.SaveImageToFile(profileImage, imageName)
+	if err != nil {
+		http.Error(w, "Failed to save image", http.StatusInternalServerError)
+		return
+	}
+	imageURL := fmt.Sprintf("%s/image/%s", os.Getenv("BACKEND_URL"), imageName)
+
+	filter := bson.M{"user_id": userId}
+	update := bson.M{"$set": bson.M{
+		"profile": imageURL,
+	}}
+
+	result, err := userCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error updating profile image")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+
 }
