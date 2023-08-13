@@ -44,6 +44,7 @@ type SignInData struct {
 	Phone          string `json:"phone"`
 	Token          string `json:"token"`
 	ProfilePicture string `json:"profile_picture"`
+	Wallet         int    `json:"wallet"`
 }
 
 // HashPassword is used to encrypt the password before it is stored in the DB
@@ -111,6 +112,35 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
 	user.Refresh_token = &refreshToken
+	user.Wallet = 0
+
+	referral := user.ReferralCode
+	if len(referral) == 18 && referral[:8] == "testify@" {
+		number := referral[8:]
+		var referer models.User
+		err := userCollection.FindOne(ctx, bson.M{"phone": number}).Decode(&referer)
+		defer cancel()
+		if err != nil {
+			http.Error(w, "Invalid Referral Code", http.StatusNotFound)
+			return
+		}
+		referer.Wallet += 200
+		filter := bson.M{"user_id": referer.User_id}
+		update := bson.M{"$set": bson.M{
+			"wallet": referer.Wallet,
+		}}
+
+		result, err := userCollection.UpdateOne(ctx, filter, update)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error updating Referer Wallet")
+			return
+		}
+		fmt.Println(result)
+	} else if referral != "" {
+		http.Error(w, "Invalid Referral Code", http.StatusNotFound)
+		return
+	}
 
 	// Create the user in the database
 	insertResult, err := userCollection.InsertOne(ctx, user)
@@ -173,6 +203,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Email:          *foundUser.Email,
 		Phone:          *foundUser.Phone,
 		ProfilePicture: foundUser.Profile,
+		Wallet:         foundUser.Wallet,
 	}
 	jsonResp, err := json.Marshal(data)
 	if err != nil {

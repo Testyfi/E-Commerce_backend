@@ -20,4 +20,6 @@ type User struct {
 	User_id        string                       `json:"user_id"`
 	QuestionPapers map[string]map[string]string `json:"questionPapers"`
 	Profile        string                       `json:"profile"`
+	ReferralCode   string                       `json:"referral_code"`
+	Wallet         int                          `json:"wallet"`
 }
