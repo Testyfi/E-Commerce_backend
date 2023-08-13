@@ -160,6 +160,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		Email:          *user.Email,
 		Phone:          *user.Phone,
 		ProfilePicture: user.Profile,
+		Wallet:         user.Wallet,
 	}
 	jsonResp, err := json.Marshal(data)
 	if err != nil {
