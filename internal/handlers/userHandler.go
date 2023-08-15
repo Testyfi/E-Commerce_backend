@@ -45,6 +45,7 @@ type SignInData struct {
 	Token          string `json:"token"`
 	ProfilePicture string `json:"profile_picture"`
 	Wallet         int    `json:"wallet"`
+	Purchased      bool   `json:"purchased"`
 }
 
 // HashPassword is used to encrypt the password before it is stored in the DB
@@ -108,6 +109,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.User_id = user.ID.Hex()
 	user.QuestionPapers = make(map[string]map[string]string, 0)
 	user.Profile = "https://static.vecteezy.com/system/resources/previews/005/544/718/original/profile-icon-design-free-vector.jpg"
+	user.Purchased = false
 
 	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
@@ -161,6 +163,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		Phone:          *user.Phone,
 		ProfilePicture: user.Profile,
 		Wallet:         user.Wallet,
+		Purchased:      user.Purchased,
 	}
 	jsonResp, err := json.Marshal(data)
 	if err != nil {
@@ -205,6 +208,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Phone:          *foundUser.Phone,
 		ProfilePicture: foundUser.Profile,
 		Wallet:         foundUser.Wallet,
+		Purchased:      foundUser.Purchased,
 	}
 	jsonResp, err := json.Marshal(data)
 	if err != nil {
@@ -431,4 +435,32 @@ func UpdateProfilePic(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 
+}
+
+func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
+	userId := chi.URLParam(r, "user_id")
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
+	err := userCollection.FindOne(ctx, bson.M{"user_id": userId}).Decode(&user)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	if user.Wallet < 199 {
+		http.Error(w, "Insufficent Wallet Balance. Please add money to your wallet", http.StatusNotAcceptable)
+		return
+	}
+	user.Wallet -= 199
+	result, err := userCollection.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": bson.M{
+		"wallet": user.Wallet,
+	}})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error Purchasing :(")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(result)
 }

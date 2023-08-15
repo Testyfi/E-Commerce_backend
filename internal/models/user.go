@@ -22,4 +22,5 @@ type User struct {
 	Profile        string                       `json:"profile"`
 	ReferralCode   string                       `json:"referral_code"`
 	Wallet         int                          `json:"wallet"`
+	Purchased      bool                         `json:"purchased"`
 }
