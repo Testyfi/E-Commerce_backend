@@ -48,6 +48,11 @@ type SignInData struct {
 	Purchased      bool   `json:"purchased"`
 }
 
+type PasswordChange struct {
+	ExistingPassword string `json:"existing_password"`
+	NewPassword      string `json:"new_password"`
+}
+
 // HashPassword is used to encrypt the password before it is stored in the DB
 func HashPassword(password string) string {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
@@ -446,6 +451,7 @@ func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
+	fmt.Println(user.Wallet)
 	if user.Wallet < 199 {
 		http.Error(w, "Insufficent Wallet Balance. Please add money to your wallet", http.StatusNotAcceptable)
 		return
@@ -462,6 +468,36 @@ func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(result)
+}
+
+func ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userId := chi.URLParam(r, "user_id")
+	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+	var passwordChanger PasswordChange
+	if err := json.NewDecoder(r.Body).Decode(&passwordChanger); err != nil {
+		http.Error(w, "Interal Server Error", http.StatusInternalServerError)
+		return
+	}
+	err := userCollection.FindOne(ctx, bson.M{"user_id": userId}).Decode(&user)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	passwordIsValid, msg := VerifyPassword(passwordChanger.ExistingPassword, *user.Password)
+	defer cancel()
+	if passwordIsValid != true {
+		http.Error(w, msg, http.StatusUnauthorized)
+		return
+	}
+	newPass := HashPassword(passwordChanger.NewPassword)
+	user.Password = &newPass
+
+	result, err := userCollection.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": bson.M{
+		"password": user.Password,
+	}})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
