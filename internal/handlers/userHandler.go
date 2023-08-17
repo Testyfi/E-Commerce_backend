@@ -451,8 +451,10 @@ func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user.Wallet -= 199
+	user.Purchased = true
 	result, err := userCollection.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": bson.M{
-		"wallet": user.Wallet,
+		"wallet":    user.Wallet,
+		"purchased": user.Purchased,
 	}})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
