@@ -45,7 +45,7 @@ func main() {
 		r.Post("/delete", handlers.DeleteUser)
 		r.Get("/stats/{user_id}/{paper_id}", handlers.GetPaperStats)
 		r.Post("/submit/user/{user_id}/paper/{paper_id}", handlers.SubmitQPaper)
-		r.Post("/{user_id}/profile", handlers.UpdateProfilePic)
+		r.Put("/{user_id}/profile", handlers.UpdateProfilePic)
 		r.Get("/{user_id}/purchase", handlers.PurchaseCourse)
 		r.Put("/{user_id}/passwordchange", handlers.ChangePassword)
 	})
