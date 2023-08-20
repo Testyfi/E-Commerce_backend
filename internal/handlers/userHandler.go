@@ -141,7 +141,11 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 	println(insertResult)
 	verificationLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/userverify" + "?user_id=" + user.User_id + "&secret=" + user.SecretCode)
-	utility.SendMail("click on this link to verify your email. "+verificationLink, *user.Email, "Email Verification")
+	err = utility.SendMail("click on this link to verify your email. "+verificationLink, *user.Email, "Email Verification")
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -476,8 +480,6 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 	userId := r.URL.Query().Get("user_id")
 	secret := r.URL.Query().Get("secret")
 
-	fmt.Println(userId, secret)
-
 	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
 	if err != nil {
 		fmt.Println(err)
@@ -527,4 +529,75 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "404 Not Found", http.StatusNotFound)
+}
+
+func ResetPassword(w http.ResponseWriter, r *http.Request) {
+	userId := r.URL.Query().Get("user_id")
+	secret := r.URL.Query().Get("secret")
+
+	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	if user.ResetCode == secret {
+		pass := HashPassword(secret)
+		user.Password = &pass
+		result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
+			"password": user.Password,
+		}})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Println(err)
+			fmt.Fprintf(w, "Error resetting Password")
+			return
+		}
+		fmt.Println(result)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Password Reset Successful. Your new Password is " + secret))
+		return
+	}
+	http.Error(w, "404 Not Found", http.StatusNotFound)
+}
+
+func ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	type ForgotPass struct {
+		Email string `json:"email"`
+	}
+
+	var helper ForgotPass
+	if err := json.NewDecoder(r.Body).Decode(&helper); err != nil {
+		fmt.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	err := userCollection.FindOne(context.Background(), bson.M{"email": helper.Email}).Decode(&user)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	user.ResetCode = utility.GenerateRandomCode()
+	result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": user.User_id}, bson.M{"$set": bson.M{
+		"reset_code": user.ResetCode,
+	}})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println(err)
+		fmt.Fprintf(w, "Error Resetting Password. Please try again later")
+		return
+	}
+	println(result)
+	resetLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/reset" + "?user_id=" + user.User_id + "&secret=" + user.ResetCode)
+	err = utility.SendMail("click on this link to reset your password. "+resetLink+" Your new Password will be "+user.ResetCode+". If this was not requested by you, kindly ignore.", helper.Email, "Testify Password Reset Link")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println(err)
+		fmt.Fprintf(w, "Internal Server Error. Please try again later")
+		return
+	}
+	w.Write([]byte("Password Reset Link has been sent to your email."))
 }
