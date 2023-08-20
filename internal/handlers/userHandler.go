@@ -24,7 +24,6 @@ import (
 )
 
 var validate = validator.New()
-var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 var user models.User
 var userCollection *mongo.Collection = database.OpenCollection(database.Client, "user")
 
@@ -78,7 +77,6 @@ func VerifyPassword(userPassword string, providedPassword string) (bool, string)
 }
 
 func SignUp(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		fmt.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -97,8 +95,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.Password = &password
 
 	// Checking if user already exists
-	alreadyExists, err := userCollection.CountDocuments(ctx, bson.M{"email": user.Email})
-	defer cancel()
+	alreadyExists, err := userCollection.CountDocuments(context.Background(), bson.M{"email": user.Email})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -115,7 +112,8 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.QuestionPapers = make(map[string]map[string]string, 0)
 	user.Profile = "https://static.vecteezy.com/system/resources/previews/005/544/718/original/profile-icon-design-free-vector.jpg"
 	user.Purchased = false
-
+	user.Verified = false
+	user.SecretCode = utility.GenerateRandomCode()
 	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
 	user.Refresh_token = &refreshToken
@@ -125,78 +123,51 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	if len(referral) == 18 && referral[:8] == "testify@" {
 		number := referral[8:]
 		var referer models.User
-		err := userCollection.FindOne(ctx, bson.M{"phone": number}).Decode(&referer)
-		defer cancel()
+		err := userCollection.FindOne(context.Background(), bson.M{"phone": number}).Decode(&referer)
 		if err != nil {
 			http.Error(w, "Invalid Referral Code", http.StatusNotFound)
 			return
 		}
-		referer.Wallet += 200
-		filter := bson.M{"user_id": referer.User_id}
-		update := bson.M{"$set": bson.M{
-			"wallet": referer.Wallet,
-		}}
-
-		result, err := userCollection.UpdateOne(ctx, filter, update)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error updating Referer Wallet")
-			return
-		}
-		fmt.Println(result)
 	} else if referral != "" {
 		http.Error(w, "Invalid Referral Code", http.StatusNotFound)
 		return
 	}
 
 	// Create the user in the database
-	insertResult, err := userCollection.InsertOne(ctx, user)
+	insertResult, err := userCollection.InsertOne(context.Background(), user)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	defer cancel()
 	println(insertResult)
+	verificationLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/userverify" + "?user_id=" + user.User_id + "&secret=" + user.SecretCode)
+	utility.SendMail("click on this link to verify your email. "+verificationLink, *user.Email, "Email Verification")
 
 	w.Header().Set("Content-Type", "application/json")
-	data := SignInData{
-		Token:          token,
-		User_ID:        user.User_id,
-		FirstName:      *user.First_name,
-		LastName:       *user.Last_name,
-		Email:          *user.Email,
-		Phone:          *user.Phone,
-		ProfilePicture: user.Profile,
-		Wallet:         user.Wallet,
-		Purchased:      user.Purchased,
-	}
-	jsonResp, err := json.Marshal(data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Write(jsonResp)
 	w.WriteHeader(http.StatusOK)
-
+	w.Write([]byte("SignUp Successful! Please verify your email ID and then Login"))
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 	var foundUser models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Interal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	err := userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&foundUser)
-	defer cancel()
+	err := userCollection.FindOne(context.Background(), bson.M{"email": user.Email}).Decode(&foundUser)
 	if err != nil {
 		http.Error(w, "Email or Password is incorrect", http.StatusUnauthorized)
 		return
 	}
 	passwordIsValid, msg := VerifyPassword(*user.Password, *foundUser.Password)
-	defer cancel()
 	if passwordIsValid != true {
 		http.Error(w, msg, http.StatusUnauthorized)
+		return
+	}
+	if foundUser.Verified == false {
+		verificationLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/userverify" + "?user_id=" + foundUser.User_id + "&secret=" + foundUser.SecretCode)
+		utility.SendMail("click on this link to verify your email. "+verificationLink, *user.Email, "Email Verification")
+		http.Error(w, "Email not verified. Verification Link has been sent to your email. Please verify it.", http.StatusForbidden)
 		return
 	}
 
@@ -248,7 +219,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleteResult, err := userCollection.DeleteOne(ctx, bson.M{"email": email})
+	deleteResult, err := userCollection.DeleteOne(context.Background(), bson.M{"email": email})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -281,16 +252,15 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	findOptions.SetSkip(int64(skip))
 	findOptions.SetLimit(int64(pageSize))
 
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-	cur, err := userCollection.Find(ctx, bson.M{}, findOptions)
+	cur, err := userCollection.Find(context.Background(), bson.M{}, findOptions)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(context.Background())
 
 	users := []models.User{}
-	for cur.Next(ctx) {
+	for cur.Next(context.Background()) {
 		var user models.User
 		err := cur.Decode(&user)
 		if err != nil {
@@ -345,7 +315,7 @@ func SubmitQPaper(w http.ResponseWriter, r *http.Request) {
 		"questionPapers": user.QuestionPapers,
 	}}
 
-	result, err := userCollection.UpdateOne(ctx, filter, update)
+	result, err := userCollection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -377,7 +347,7 @@ func GetPaperStats(w http.ResponseWriter, r *http.Request) {
 			qStat.QuestionID = qid
 			qStat.UserAnswer = userAns
 			err := questionCollection.FindOne(
-				ctx,
+				context.Background(),
 				bson.M{"q_id": qid},
 			).Decode(&question)
 			if err != nil {
@@ -409,7 +379,7 @@ func GetPaperStats(w http.ResponseWriter, r *http.Request) {
 
 func UpdateProfilePic(w http.ResponseWriter, r *http.Request) {
 	userId := chi.URLParam(r, "user_id")
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
 		fmt.Println(err)
@@ -430,7 +400,7 @@ func UpdateProfilePic(w http.ResponseWriter, r *http.Request) {
 		"profile": imageURL,
 	}}
 
-	result, err := userCollection.UpdateOne(ctx, filter, update)
+	result, err := userCollection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error updating profile image")
@@ -444,9 +414,8 @@ func UpdateProfilePic(w http.ResponseWriter, r *http.Request) {
 
 func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
 	userId := chi.URLParam(r, "user_id")
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
-	err := userCollection.FindOne(ctx, bson.M{"user_id": userId}).Decode(&user)
+	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
@@ -458,7 +427,7 @@ func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
 	}
 	user.Wallet -= 199
 	user.Purchased = true
-	result, err := userCollection.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": bson.M{
+	result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
 		"wallet":    user.Wallet,
 		"purchased": user.Purchased,
 	}})
@@ -475,19 +444,19 @@ func PurchaseCourse(w http.ResponseWriter, r *http.Request) {
 
 func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	userId := chi.URLParam(r, "user_id")
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
 	var passwordChanger PasswordChange
 	if err := json.NewDecoder(r.Body).Decode(&passwordChanger); err != nil {
 		http.Error(w, "Interal Server Error", http.StatusInternalServerError)
 		return
 	}
-	err := userCollection.FindOne(ctx, bson.M{"user_id": userId}).Decode(&user)
+	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 	passwordIsValid, msg := VerifyPassword(passwordChanger.ExistingPassword, *user.Password)
-	defer cancel()
+
 	if passwordIsValid != true {
 		http.Error(w, msg, http.StatusUnauthorized)
 		return
@@ -495,10 +464,67 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	newPass := HashPassword(passwordChanger.NewPassword)
 	user.Password = &newPass
 
-	result, err := userCollection.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": bson.M{
+	result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
 		"password": user.Password,
 	}})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
+}
+
+func UserVerification(w http.ResponseWriter, r *http.Request) {
+	userId := r.URL.Query().Get("user_id")
+	secret := r.URL.Query().Get("secret")
+
+	fmt.Println(userId, secret)
+
+	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	if user.Verified == false && user.SecretCode == secret {
+		user.Verified = true
+		result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
+			"verified": user.Verified,
+		}})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Println(err)
+			fmt.Fprintf(w, "Error verifying email")
+			return
+		}
+
+		referral := user.ReferralCode
+		if len(referral) == 18 && referral[:8] == "testify@" {
+			number := referral[8:]
+			var referer models.User
+			err := userCollection.FindOne(context.Background(), bson.M{"phone": number}).Decode(&referer)
+
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusNotFound)
+				return
+			}
+			referer.Wallet += 200
+			filter := bson.M{"user_id": referer.User_id}
+			update := bson.M{"$set": bson.M{
+				"wallet": referer.Wallet,
+			}}
+
+			result, err := userCollection.UpdateOne(context.Background(), filter, update)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			fmt.Println(result)
+		}
+
+		println(result)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Verified Successfully! Please Login now."))
+		return
+	}
+
+	http.Error(w, "404 Not Found", http.StatusNotFound)
 }

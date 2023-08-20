@@ -40,6 +40,7 @@ func main() {
 	// User Routes
 	r.Post("/userlogin", handlers.Login)
 	r.Post("/usersignup", handlers.SignUp)
+	r.Get("/userverify", handlers.UserVerification)
 	r.Route("/users", func(r chi.Router) {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/delete", handlers.DeleteUser)

@@ -41,16 +41,15 @@ func GetAdmins(w http.ResponseWriter, r *http.Request) {
 	findOptions.SetSkip(int64(skip))
 	findOptions.SetLimit(int64(pageSize))
 
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-	cur, err := adminCollection.Find(ctx, bson.M{}, findOptions)
+	cur, err := adminCollection.Find(context.Background(), bson.M{}, findOptions)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(context.Background())
 
 	admins := []models.Admin{}
-	for cur.Next(ctx) {
+	for cur.Next(context.Background()) {
 		var admin models.Admin
 		err := cur.Decode(&admin)
 		if err != nil {
@@ -82,7 +81,7 @@ func GetAdmins(w http.ResponseWriter, r *http.Request) {
 
 func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 	var admin models.Admin
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
 	if err := json.NewDecoder(r.Body).Decode(&admin); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		print(err.Error())
@@ -94,8 +93,8 @@ func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 	admin.Password = &password
 
 	// Checking if admin already exists
-	alreadyExists, err := adminCollection.CountDocuments(ctx, bson.M{"email": admin.Email})
-	defer cancel()
+	alreadyExists, err := adminCollection.CountDocuments(context.Background(), bson.M{"email": admin.Email})
+
 	if err != nil {
 		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
@@ -114,12 +113,11 @@ func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 	admin.Refresh_token = &refreshToken
 
 	// Create the admin in the database
-	insertResult, err := adminCollection.InsertOne(ctx, admin)
+	insertResult, err := adminCollection.InsertOne(context.Background(), admin)
 	if err != nil {
 		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer cancel()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(insertResult)
@@ -128,7 +126,7 @@ func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 }
 
 func AdminLogin(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
 	var foundAdmin models.Admin
 	var admin models.Admin
 	if err := json.NewDecoder(r.Body).Decode(&admin); err != nil {
@@ -136,14 +134,14 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := adminCollection.FindOne(ctx, bson.M{"email": admin.Email}).Decode(&foundAdmin)
-	defer cancel()
+	err := adminCollection.FindOne(context.Background(), bson.M{"email": admin.Email}).Decode(&foundAdmin)
+
 	if err != nil {
 		http.Error(w, "Email or Password is incorrect", http.StatusUnauthorized)
 		return
 	}
 	passwordIsValid, msg := VerifyPassword(*admin.Password, *foundAdmin.Password)
-	defer cancel()
+
 	if passwordIsValid != true {
 		http.Error(w, msg, http.StatusUnauthorized)
 		return

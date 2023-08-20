@@ -23,4 +23,6 @@ type User struct {
 	ReferralCode   string                       `json:"referral_code"`
 	Wallet         int                          `json:"wallet"`
 	Purchased      bool                         `json:"purchased"`
+	Verified       bool                         `json:"verified"`
+	SecretCode     string                       `json:"secret_code"`
 }
