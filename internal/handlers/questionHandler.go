@@ -42,16 +42,15 @@ func GetQuestions(w http.ResponseWriter, r *http.Request) {
 	findOptions.SetSkip(int64(skip))
 	findOptions.SetLimit(int64(pageSize))
 
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-	cur, err := questionCollection.Find(ctx, bson.M{}, findOptions)
+	cur, err := questionCollection.Find(context.Background(), bson.M{}, findOptions)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(context.Background())
 
 	questions := []models.Question{}
-	for cur.Next(ctx) {
+	for cur.Next(context.Background()) {
 		var question models.Question
 		err := cur.Decode(&question)
 		if err != nil {
@@ -83,7 +82,6 @@ func GetQuestions(w http.ResponseWriter, r *http.Request) {
 
 func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	var question models.Question
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
@@ -98,8 +96,8 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Checking if question already exists
-	alreadyExists, err := questionCollection.CountDocuments(ctx, bson.M{"question": question.Question})
-	defer cancel()
+	alreadyExists, err := questionCollection.CountDocuments(context.Background(), bson.M{"question": question.Question})
+
 	if err != nil {
 		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
@@ -189,12 +187,11 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the question in the database
-	insertResult, err := questionCollection.InsertOne(ctx, question)
+	insertResult, err := questionCollection.InsertOne(context.Background(), question)
 	if err != nil {
 		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer cancel()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(insertResult)
@@ -206,7 +203,7 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 	questionID := chi.URLParam(r, "id")
 	question := models.Question{}
 	err := questionCollection.FindOne(
-		ctx,
+		context.Background(),
 		bson.M{"q_id": questionID},
 	).Decode(&question)
 	if err != nil {
@@ -228,7 +225,7 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 func DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 	questionID := chi.URLParam(r, "id")
 
-	result, err := questionCollection.DeleteOne(ctx, bson.M{"q_id": questionID})
+	result, err := questionCollection.DeleteOne(context.Background(), bson.M{"q_id": questionID})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error deleting question")
@@ -251,7 +248,6 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 	questionID := chi.URLParam(r, "id")
 
 	var updatedQuestion models.Question
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
 	err := r.ParseMultipartForm(10 << 20)
 	if err != nil {
@@ -352,7 +348,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		"subject_tags":  updatedQuestion.Subject_Tags,
 	}}
 
-	result, err := questionCollection.UpdateOne(ctx, filter, update)
+	result, err := questionCollection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error updating question")
@@ -378,7 +374,7 @@ func DeleteMany(w http.ResponseWriter, r *http.Request) {
 		utility.DeleteQuestionImagesByQID(qid)
 	}
 
-	result, err := questionCollection.DeleteMany(ctx, bson.M{"q_id": bson.M{"$in": ids}})
+	result, err := questionCollection.DeleteMany(context.Background(), bson.M{"q_id": bson.M{"$in": ids}})
 	if err != nil {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -390,7 +386,7 @@ func DeleteMany(w http.ResponseWriter, r *http.Request) {
 }
 
 func UploadCSV(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
 	qFile, _, err := r.FormFile("questionCsvFile")
 	if err != nil {
 		http.Error(w, "Failed to retrieve the file", http.StatusBadRequest)
@@ -426,8 +422,8 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 		mid[record[4]] = qid
 		question.Q_id = qid
 		// Checking if question already exists
-		alreadyExists, err := questionCollection.CountDocuments(ctx, bson.M{"question": question.Question})
-		defer cancel()
+		alreadyExists, err := questionCollection.CountDocuments(context.Background(), bson.M{"question": question.Question})
+
 		if err != nil {
 			http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 			return
@@ -437,7 +433,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Inserting Question
-		_, err = questionCollection.InsertOne(ctx, question)
+		_, err = questionCollection.InsertOne(context.Background(), question)
 		if err != nil {
 			http.Error(w, "Failed to insert record into the database", http.StatusInternalServerError)
 			return
@@ -470,7 +466,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 			}},
 		}
 
-		_, err = questionCollection.UpdateOne(ctx, filter, update)
+		_, err = questionCollection.UpdateOne(context.Background(), filter, update)
 		if err != nil {
 			log.Printf("Failed to update question with qid '%s': %v\n", qid, err)
 		} else {
@@ -483,7 +479,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateQPaper(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+
 	var qpaper models.QPaper
 	if err := json.NewDecoder(r.Body).Decode(&qpaper); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -493,12 +489,11 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 	qpaper.ID = primitive.NewObjectID()
 	qpaper.Qpid = qpaper.ID.Hex()
 
-	insertResult, err := qpaperCollection.InsertOne(ctx, qpaper)
+	insertResult, err := qpaperCollection.InsertOne(context.Background(), qpaper)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	defer cancel()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(insertResult)
