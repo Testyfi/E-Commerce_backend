@@ -546,8 +546,8 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		user.Password = &pass
 		user.ResetCode = "Not applicable"
 		result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
-			"password":   user.Password,
-			"reset_code": user.ResetCode,
+			"password":  user.Password,
+			"resetcode": user.ResetCode,
 		}})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -584,7 +584,7 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	user.ResetCode = utility.GenerateRandomCode()
 	result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": user.User_id}, bson.M{"$set": bson.M{
-		"reset_code": user.ResetCode,
+		"resetcode": user.ResetCode,
 	}})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
