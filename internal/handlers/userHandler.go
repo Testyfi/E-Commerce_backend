@@ -544,8 +544,10 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	if user.ResetCode == secret {
 		pass := HashPassword(secret)
 		user.Password = &pass
+		user.ResetCode = "Not applicable"
 		result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
-			"password": user.Password,
+			"password":   user.Password,
+			"reset_code": user.ResetCode,
 		}})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
