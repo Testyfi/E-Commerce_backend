@@ -488,18 +488,24 @@ var Topics = []string{
 // 4-Multiple
 // 4-list
 
+type CreateQPaperHelper struct {
+	questions []int
+}
+
 func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 	userId := chi.URLParam(r, "user_id")
 	var qpaper models.QPaper
+	var createpaperhelper CreateQPaperHelper
 	var questions []int
 
-	err := json.NewDecoder(r.Body).Decode(&questions)
+	err := json.NewDecoder(r.Body).Decode(&createpaperhelper)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Println(err)
 		fmt.Fprintf(w, "Invalid request body")
 		return
 	}
+	questions = createpaperhelper.questions
 
 	for i := 0; i < len(questions); i++ {
 		var pipeline []primitive.M
@@ -590,6 +596,8 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 		})
 		qpaper.Questions = append(qpaper.Questions, question.Q_id)
 	}
+	qpaper.ID = primitive.NewObjectID()
+	qpaper.Qpid = qpaper.ID.Hex()
 	result, err := qpaperCollection.InsertOne(context.Background(), qpaper)
 	if err != nil {
 		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
