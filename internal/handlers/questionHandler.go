@@ -489,7 +489,7 @@ var Topics = []string{
 // 4-list
 
 type CreateQPaperHelper struct {
-	questions []int
+	Questions []int `json:"questions"`
 }
 
 func CreateQPaper(w http.ResponseWriter, r *http.Request) {
@@ -505,7 +505,7 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Invalid request body")
 		return
 	}
-	questions = createpaperhelper.questions
+	questions = createpaperhelper.Questions
 
 	for i := 0; i < len(questions); i++ {
 		var pipeline []primitive.M
