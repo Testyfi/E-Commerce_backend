@@ -20,6 +20,7 @@ type Question struct {
 	Created_at    time.Time          `bson:"created_at"`
 	Subject_Tags  []string           `json:"subjectTags"`
 	Q_id          string             `json:"qid"`
+	UsedBy        []string           `json:"usedBy"`
 }
 
 type QPaper struct {

@@ -51,6 +51,7 @@ func main() {
 		r.Put("/{user_id}/profile", handlers.UpdateProfilePic)
 		r.Get("/{user_id}/purchase", handlers.PurchaseCourse)
 		r.Put("/{user_id}/passwordchange", handlers.ChangePassword)
+		r.Post("/{user_id}/createTest", handlers.CreateQPaper)
 	})
 
 	r.Get("/image/{image}", handlers.ServeImage)

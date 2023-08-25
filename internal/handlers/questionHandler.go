@@ -110,7 +110,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	question.ID = primitive.NewObjectID()
 	question.Q_id = question.ID.Hex()
 	question.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-
+	question.UsedBy = []string{}
 	questionImages := r.MultipartForm.File["questionImages"]
 	question.Images = []string{}
 	for i, fileHeader := range questionImages {
@@ -478,25 +478,124 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+var Topics = []string{
+	"Kinematics", "Newton’s laws of motion",
+	"Work Power Energy", "Systems of particles and Rotational Motion", "Gravitation", "Mechanical Properties of Solids", "Mechanical Properties of Fluids", "Thermal Properties of Matter", "Thermodynamics", "Kinetic Theory", "Oscillations", "Waves", "ELECTRIC CHARGES AND FIELDS", "ELECTROSTATIC POTENTIAL AND CAPACITANCE", "CURRENT ELECTRICITY", "MOVING CHARGES AND MAGNETISM", "MAGNETISM AND MATTER", "ELECTROMAGNETIC INDUCTION", "ALTERNATING CURRENT", "ELECTROMAGNETIC WAVES", "RAY OPTICS AND OPTICAL INSTRUMENTS", "WAVE OPTICS", "DUAL NATURE OF RADIATION AND MATTER", "SEMICONDUCTOR", "MODERN PHYSICS", "Some Basic,Mole Concept,Balance Equations", "Gaseous and Liquids States", "Atomic Structure", "Chemical Bonding and Molecular Structure", "Energetics", "Equilibrium", "ElectroChemistry", "Chamical Kinetics", "Solid State", "Solutions", "Nuclear Chemistry", "S and P block Elements", "D and F block Elements", "Metallurgy", "Principles of Qualitative Analysis", "General Organic Chemistry", "Hydrocarbons", "Organic Compunds Containing Halogens", "Alcohols Phenols Ethers", "Aldehyde and Ketones", "Carboxylic Acids and Derivatives", "Organic Compunds Containing Nitrogen", "Practical Organic Chemistry", "Sets, Relation and Function", "Complex Number", "Quadratic Equations", "Gravitation", "Arithmetic and Geometric Progressions", "Logarithms", "Straight Line", "Circle", "Parabola", "Ellipse", "Hyperbola", "Permutation and Combinations", "Binomial Theorem", "Trigonometry", "Probability", "Matrices and Determinant", "Limits, continuity and Differentiability", "Differentiations", "Applications of Differentiations", "Integrals", "Application of Integrals", "Differential equations", "Vectors Algebra", "Three Dimensional Geometry",
+}
+
+// 6-numerical
+// 6-single
+// 4-Multiple
+// 4-list
+
 func CreateQPaper(w http.ResponseWriter, r *http.Request) {
-
+	userId := chi.URLParam(r, "user_id")
 	var qpaper models.QPaper
-	if err := json.NewDecoder(r.Body).Decode(&qpaper); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	var questions []int
 
-	qpaper.ID = primitive.NewObjectID()
-	qpaper.Qpid = qpaper.ID.Hex()
-
-	insertResult, err := qpaperCollection.InsertOne(context.Background(), qpaper)
+	err := json.NewDecoder(r.Body).Decode(&questions)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
+		fmt.Fprintf(w, "Invalid request body")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(insertResult)
+	for i := 0; i < len(questions); i++ {
+		var pipeline []primitive.M
+		if (i >= 0 && i < 6) || (i >= 20 && i < 26) || (i >= 40 && i < 46) {
+			pipeline = []bson.M{
+				{
+					"$match": bson.M{
+						"usedby": bson.M{
+							"$ne": userId,
+						},
+						"subject_tags": Topics[questions[i]],
+						"type":         "Numerical Answer",
+					},
+				},
+				{
+					"$sample": bson.M{
+						"size": 1,
+					},
+				},
+			}
+		} else if (i >= 6 && i < 12) || (i >= 26 && i < 32) || (i >= 46 && i < 52) {
+			pipeline = []bson.M{
+				{
+					"$match": bson.M{
+						"usedby": bson.M{
+							"$ne": userId,
+						},
+						"subject_tags": Topics[questions[i]],
+						"type":         "Single Correct",
+					},
+				},
+				{
+					"$sample": bson.M{
+						"size": 1,
+					},
+				},
+			}
+		} else if (i >= 12 && i < 16) || (i >= 32 && i < 36) || (i >= 52 && i < 56) {
+			pipeline = []bson.M{
+				{
+					"$match": bson.M{
+						"usedby": bson.M{
+							"$ne": userId,
+						},
+						"subject_tags": Topics[questions[i]],
+						"type":         "Multiple Choice",
+					},
+				},
+				{
+					"$sample": bson.M{
+						"size": 1,
+					},
+				},
+			}
+		} else {
+			pipeline = []bson.M{
+				{
+					"$match": bson.M{
+						"usedby": bson.M{
+							"$ne": userId,
+						},
+						"subject_tags": Topics[questions[i]],
+						"type":         "List-Type",
+					},
+				},
+				{
+					"$sample": bson.M{
+						"size": 1,
+					},
+				},
+			}
+		}
+
+		cursor, err := questionCollection.Aggregate(context.Background(), pipeline)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer cursor.Close(context.Background())
+		var question models.Question
+		err = cursor.Decode(&question)
+		if err != nil {
+			log.Fatal(err)
+		}
+		question.UsedBy = append(question.UsedBy, userId)
+		questionCollection.UpdateOne(context.Background(), bson.M{"q_id": question.Q_id}, bson.M{
+			"$set": bson.M{
+				"usedby": question.UsedBy},
+		})
+		qpaper.Questions = append(qpaper.Questions, question.Q_id)
+	}
+	result, err := qpaperCollection.InsertOne(context.Background(), qpaper)
+	if err != nil {
+		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	return
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result.InsertedID)
 }
