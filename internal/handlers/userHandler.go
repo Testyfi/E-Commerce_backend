@@ -560,7 +560,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Password Reset Successful. Your new Password is " + secret))
 		return
 	}
-	http.Error(w, "404 Not Found", http.StatusNotFound)
+	http.Error(w, "404 Not Found. Probably you have already reset your password using this Link.", http.StatusNotFound)
 }
 
 func ForgotPassword(w http.ResponseWriter, r *http.Request) {

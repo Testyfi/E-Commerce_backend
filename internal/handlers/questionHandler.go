@@ -498,7 +498,14 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 	var createpaperhelper CreateQPaperHelper
 	var questions []int
 
-	err := json.NewDecoder(r.Body).Decode(&createpaperhelper)
+	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&createpaperhelper)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Println(err)
@@ -581,13 +588,15 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 
 		cursor, err := questionCollection.Aggregate(context.Background(), pipeline)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		defer cursor.Close(context.Background())
 		var question models.Question
 		err = cursor.Decode(&question)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, "No such question found for selected topics", http.StatusNotFound)
+			return
 		}
 		question.UsedBy = append(question.UsedBy, userId)
 		questionCollection.UpdateOne(context.Background(), bson.M{"q_id": question.Q_id}, bson.M{
@@ -596,6 +605,7 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 		})
 		qpaper.Questions = append(qpaper.Questions, question.Q_id)
 	}
+
 	qpaper.ID = primitive.NewObjectID()
 	qpaper.Qpid = qpaper.ID.Hex()
 	result, err := qpaperCollection.InsertOne(context.Background(), qpaper)
