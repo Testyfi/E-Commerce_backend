@@ -340,12 +340,13 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 
 	filter := bson.M{"q_id": questionID}
 	update := bson.M{"$set": bson.M{
-		"question":      updatedQuestion.Question,
-		"images":        updatedQuestion.Images,
-		"type":          updatedQuestion.Type,
-		"options":       updatedQuestion.Options,
-		"correctanswer": updatedQuestion.CorrectAnswer,
-		"subject_tags":  updatedQuestion.Subject_Tags,
+		"question":       updatedQuestion.Question,
+		"images":         updatedQuestion.Images,
+		"type":           updatedQuestion.Type,
+		"options":        updatedQuestion.Options,
+		"correctanswer":  updatedQuestion.CorrectAnswer,
+		"subject_tags":   updatedQuestion.Subject_Tags,
+		"correctanswers": updatedQuestion.CorrectAnswers,
 	}}
 
 	result, err := questionCollection.UpdateOne(context.Background(), filter, update)
@@ -592,6 +593,7 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer cursor.Close(context.Background())
+
 		var question models.Question
 		err = cursor.Decode(&question)
 		if err != nil {

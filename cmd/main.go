@@ -66,7 +66,6 @@ func main() {
 		r.Delete("/{id}", handlers.DeleteQuestion)
 		r.Post("/delete", handlers.DeleteMany)
 		r.Post("/upload", handlers.UploadCSV)
-		r.Post("/createpaper", handlers.CreateQPaper)
 	})
 
 	r.Post("/adminlogin", handlers.AdminLogin)
