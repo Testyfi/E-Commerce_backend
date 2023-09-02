@@ -41,6 +41,7 @@ func GetQuestions(w http.ResponseWriter, r *http.Request) {
 	findOptions := options.Find()
 	findOptions.SetSkip(int64(skip))
 	findOptions.SetLimit(int64(pageSize))
+	findOptions.SetSort(bson.M{"created_at": -1})
 
 	cur, err := questionCollection.Find(context.Background(), bson.M{}, findOptions)
 	if err != nil {
