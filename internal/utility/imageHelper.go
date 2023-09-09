@@ -16,6 +16,7 @@ func SaveImageToFile(fileHeader *multipart.FileHeader, filename string) error {
 		return err
 	}
 	defer file.Close()
+	filename = fmt.Sprintf("%s%s", "assets/", filename)
 
 	err = s3.UploadObject("testify-jee", filename, s3.CreateSession(s3.AWSConfig{
 		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),

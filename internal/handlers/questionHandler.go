@@ -23,7 +23,7 @@ import (
 
 var questionCollection *mongo.Collection = database.OpenCollection(database.Client, "question")
 var qpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "qpaper")
-var api string = "https://testify-jee.s3.ap-south-1.amazonaws.com/"
+var api string = "https://testify-jee.s3.ap-south-1.amazonaws.com/assets/"
 
 func GetQuestions(w http.ResponseWriter, r *http.Request) {
 	pageSize, err := strconv.Atoi(r.URL.Query().Get("pageSize"))
