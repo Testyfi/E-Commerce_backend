@@ -2,13 +2,12 @@ package utility
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
+	s3 "testify/aws"
 )
 
 func SaveImageToFile(fileHeader *multipart.FileHeader, filename string) error {
@@ -18,21 +17,20 @@ func SaveImageToFile(fileHeader *multipart.FileHeader, filename string) error {
 	}
 	defer file.Close()
 
-	// Create the "assets" directory if it doesn't exist
-	err = os.MkdirAll("./assets", os.ModePerm)
+	err = s3.UploadObject("testify-jee", filename, s3.CreateSession(s3.AWSConfig{
+		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
+		Region:          os.Getenv("AWS_REGION"),
+		AccessKeySecret: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+	}), s3.AWSConfig{
+		AccessKeyID:     os.Getenv("AWS_ACCESS_KEY_ID"),
+		Region:          os.Getenv("AWS_REGION"),
+		AccessKeySecret: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+	}, file)
+
 	if err != nil {
 		return err
 	}
-
-	imagePath := path.Join("./assets", filename)
-	out, err := os.Create(imagePath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, file)
-	return err
+	return nil
 }
 
 // Function to delete all question images for a specific qid from the "assets" directory.

@@ -23,6 +23,7 @@ import (
 
 var questionCollection *mongo.Collection = database.OpenCollection(database.Client, "question")
 var qpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "qpaper")
+var api string = "https://testify-jee.s3.ap-south-1.amazonaws.com/"
 
 func GetQuestions(w http.ResponseWriter, r *http.Request) {
 	pageSize, err := strconv.Atoi(r.URL.Query().Get("pageSize"))
@@ -57,6 +58,24 @@ func GetQuestions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "Interal Server Error", http.StatusInternalServerError)
 			return
+		}
+
+		for i := 0; i < len(question.Images); i++ {
+			question.Images[i] = fmt.Sprintf("%s%s", api, question.Images[i])
+		}
+		if question.Type == "Single Correct" || question.Type == "Multiple Choice" {
+			if len(question.Options[0].Image) > 0 {
+				question.Options[0].Image = fmt.Sprintf("%s%s", api, question.Options[0].Image)
+			}
+			if len(question.Options[1].Image) > 0 {
+				question.Options[1].Image = fmt.Sprintf("%s%s", api, question.Options[1].Image)
+			}
+			if len(question.Options[2].Image) > 0 {
+				question.Options[2].Image = fmt.Sprintf("%s%s", api, question.Options[2].Image)
+			}
+			if len(question.Options[3].Image) > 0 {
+				question.Options[3].Image = fmt.Sprintf("%s%s", api, question.Options[3].Image)
+			}
 		}
 		questions = append(questions, question)
 	}
@@ -116,7 +135,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	question.Images = []string{}
 	for i, fileHeader := range questionImages {
 		// Save the uploaded file to the "assets" directory
-		imageName := fmt.Sprintf("%s%d", question.Q_id, i)
+		imageName := fmt.Sprintf("%s%d.png", question.Q_id, i)
 		err := utility.SaveImageToFile(fileHeader, imageName)
 		if err != nil {
 			http.Error(w, "Failed to save image", http.StatusInternalServerError)
@@ -127,7 +146,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		question.Images = append(question.Images, imageName)
 	}
 
-	if question.Type == "Multiple Choice" {
+	if question.Type == "Multiple Choice" || question.Type == "Single Correct" {
 		optionAImage := r.MultipartForm.File["optionAImage"]
 		optionBImage := r.MultipartForm.File["optionBImage"]
 		optionCImage := r.MultipartForm.File["optionCImage"]
@@ -136,7 +155,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option A image
 		if len(optionAImage) > 0 {
 			fileHeader := optionAImage[0]
-			imagePath := fmt.Sprintf("%sA", question.ID.Hex())
+			imagePath := fmt.Sprintf("%sA.png", question.ID.Hex())
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				fmt.Println(err)
@@ -150,7 +169,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option B image
 		if len(optionBImage) > 0 {
 			fileHeader := optionBImage[0]
-			imagePath := fmt.Sprintf("%sB", question.ID.Hex())
+			imagePath := fmt.Sprintf("%sB.png", question.ID.Hex())
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option B image", http.StatusInternalServerError)
@@ -163,7 +182,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option C image
 		if len(optionCImage) > 0 {
 			fileHeader := optionCImage[0]
-			imagePath := fmt.Sprintf("%sC", question.ID.Hex())
+			imagePath := fmt.Sprintf("%sC.png", question.ID.Hex())
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option C image", http.StatusInternalServerError)
@@ -176,7 +195,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option D image
 		if len(optionDImage) > 0 {
 			fileHeader := optionDImage[0]
-			imagePath := fmt.Sprintf("%sD", question.ID.Hex())
+			imagePath := fmt.Sprintf("%sD.png", question.ID.Hex())
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option D image", http.StatusInternalServerError)
@@ -217,7 +236,23 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
+	for i := 0; i < len(question.Images); i++ {
+		question.Images[i] = fmt.Sprintf("%s%s", api, question.Images[i])
+	}
+	if question.Type == "Single Correct" || question.Type == "Multiple Choice" {
+		if len(question.Options[0].Image) > 0 {
+			question.Options[0].Image = fmt.Sprintf("%s%s", api, question.Options[0].Image)
+		}
+		if len(question.Options[1].Image) > 0 {
+			question.Options[1].Image = fmt.Sprintf("%s%s", api, question.Options[1].Image)
+		}
+		if len(question.Options[2].Image) > 0 {
+			question.Options[2].Image = fmt.Sprintf("%s%s", api, question.Options[2].Image)
+		}
+		if len(question.Options[3].Image) > 0 {
+			question.Options[3].Image = fmt.Sprintf("%s%s", api, question.Options[3].Image)
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(question)
 
@@ -269,18 +304,17 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 	updatedQuestion.Images = []string{}
 	for i, fileHeader := range questionImages {
 		// Save the uploaded file to the "assets" directory
-		imageName := fmt.Sprintf("%s%d", questionID, i)
+		imageName := fmt.Sprintf("%s%d.png", questionID, i)
 		err := utility.SaveImageToFile(fileHeader, imageName)
 		if err != nil {
 			http.Error(w, "Failed to save image", http.StatusInternalServerError)
 			return
 		}
-
 		// Update the Images array with the path to the saved image
 		updatedQuestion.Images = append(updatedQuestion.Images, imageName)
 	}
 
-	if updatedQuestion.Type == "Multiple Choice" {
+	if updatedQuestion.Type == "Multiple Choice" || updatedQuestion.Type == "Single Correct" {
 		optionAImage := r.MultipartForm.File["optionAImage"]
 		optionBImage := r.MultipartForm.File["optionBImage"]
 		optionCImage := r.MultipartForm.File["optionCImage"]
@@ -289,7 +323,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option A image
 		if len(optionAImage) > 0 {
 			fileHeader := optionAImage[0]
-			imagePath := fmt.Sprintf("%sA", questionID)
+			imagePath := fmt.Sprintf("%sA.png", questionID)
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option A image", http.StatusInternalServerError)
@@ -302,7 +336,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option B image
 		if len(optionBImage) > 0 {
 			fileHeader := optionBImage[0]
-			imagePath := fmt.Sprintf("%sB", questionID)
+			imagePath := fmt.Sprintf("%sB.png", questionID)
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option B image", http.StatusInternalServerError)
@@ -315,7 +349,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option C image
 		if len(optionCImage) > 0 {
 			fileHeader := optionCImage[0]
-			imagePath := fmt.Sprintf("%sC", questionID)
+			imagePath := fmt.Sprintf("%sC.png", questionID)
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option C image", http.StatusInternalServerError)
@@ -328,7 +362,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		// Process option D image
 		if len(optionDImage) > 0 {
 			fileHeader := optionDImage[0]
-			imagePath := fmt.Sprintf("%sD", questionID)
+			imagePath := fmt.Sprintf("%sD.png", questionID)
 			err := utility.SaveImageToFile(fileHeader, imagePath)
 			if err != nil {
 				http.Error(w, "Failed to save option D image", http.StatusInternalServerError)
