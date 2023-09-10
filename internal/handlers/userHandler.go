@@ -392,12 +392,12 @@ func UpdateProfilePic(w http.ResponseWriter, r *http.Request) {
 	}
 	profileImage := r.MultipartForm.File["profileImage"][0]
 	imageName := fmt.Sprintf("profile%s.jpg", userId)
-	err = utility.SaveImageToFile(profileImage, imageName)
+	err = utility.SaveImageToFile(profileImage, imageName, userId, "users")
 	if err != nil {
 		http.Error(w, "Failed to save image", http.StatusInternalServerError)
 		return
 	}
-	imageURL := fmt.Sprintf("%s/image/%s", os.Getenv("BACKEND_URL"), imageName)
+	imageURL := fmt.Sprintf("%s/users/%s/%s", "https://testify-jee.s3.ap-south-1.amazonaws.com/assets", userId, imageName)
 
 	filter := bson.M{"user_id": userId}
 	update := bson.M{"$set": bson.M{
