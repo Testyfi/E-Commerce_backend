@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -437,6 +436,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 	qFile, _, err := r.FormFile("questionCsvFile")
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to retrieve the file", http.StatusBadRequest)
 		return
 	}
@@ -446,49 +446,62 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 	reader := csv.NewReader(qFile)
 	records, err := reader.ReadAll()
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to parse the CSV file", http.StatusBadRequest)
 		return
 	}
 
-	mid := make(map[string]string)
+	mid := make(map[string]int)
+	oid := make(map[string]int)
 
 	// Insert CSV records in the database
+	questions := []models.Question{}
+
 	for _, record := range records {
 
 		question := models.Question{
-			Question:      record[0],
-			Images:        strings.Split(record[1], ", "),
-			Type:          record[2],
-			Subject_Tags:  strings.Split(record[3], ", "),
-			Q_id:          record[4],
-			ID:            primitive.NewObjectID(),
-			CorrectAnswer: record[5],
-			Created_at:    time.Now(),
-			Options:       make([]models.Option, 0),
+			Question:       record[0],
+			Type:           record[2],
+			Subject_Tags:   strings.Split(record[3], ", "),
+			Q_id:           record[4],
+			ID:             primitive.NewObjectID(),
+			CorrectAnswer:  record[5],
+			Created_at:     time.Now(),
+			Options:        make([]models.Option, 4),
+			CorrectAnswers: []string{},
+			Images:         []string{},
 		}
+		question.Options[0].Text = ""
+		question.Options[1].Text = ""
+		question.Options[2].Text = ""
+		question.Options[3].Text = ""
+		question.Options[0].Image = ""
+		question.Options[1].Image = ""
+		question.Options[2].Image = ""
+		question.Options[3].Image = ""
+
 		qid := question.ID.Hex()
-		mid[record[4]] = qid
+		mid[record[4]] = len(questions)
+		oid[record[4]] = 0
 		question.Q_id = qid
 		// Checking if question already exists
 		alreadyExists, err := questionCollection.CountDocuments(context.Background(), bson.M{"question": question.Question})
 
 		if err != nil {
+			fmt.Println(err)
 			http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if alreadyExists > 0 {
+			fmt.Println(err)
 			http.Error(w, "Question already exists!", http.StatusConflict)
 			return
 		}
-		// Inserting Question
-		_, err = questionCollection.InsertOne(context.Background(), question)
-		if err != nil {
-			http.Error(w, "Failed to insert record into the database", http.StatusInternalServerError)
-			return
-		}
+		questions = append(questions, question)
 	}
 	optionFile, _, err := r.FormFile("optionCsvFile")
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to retrieve the file", http.StatusBadRequest)
 		return
 	}
@@ -496,6 +509,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 	reader = csv.NewReader(optionFile)
 	optionRecords, err := reader.ReadAll()
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Failed to parse the CSV file", http.StatusBadRequest)
 		return
 	}
@@ -503,22 +517,18 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 		qid := optionRecord[2]
 		optionText := optionRecord[0]
-		optionImage := optionRecord[1]
+		questions[mid[qid]].Options[oid[qid]].Text = optionText
+		oid[qid]++
+	}
 
-		// 	// Find the question in MongoDB by qid
-		filter := bson.M{"q_id": mid[qid]}
-		update := bson.M{
-			"$push": bson.M{"options": models.Option{
-				Text:  optionText,
-				Image: optionImage,
-			}},
-		}
+	for _, question := range questions {
 
-		_, err = questionCollection.UpdateOne(context.Background(), filter, update)
+		// Inserting Question
+		_, err = questionCollection.InsertOne(context.Background(), question)
 		if err != nil {
-			log.Printf("Failed to update question with qid '%s': %v\n", qid, err)
-		} else {
-			log.Printf("Updated question with qid '%s'\n", qid)
+			fmt.Println(err)
+			http.Error(w, "Failed to insert record into the database", http.StatusInternalServerError)
+			return
 		}
 	}
 
