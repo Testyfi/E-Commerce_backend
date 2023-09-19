@@ -132,6 +132,19 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 	question.UsedBy = []string{}
 	questionImages := r.MultipartForm.File["questionImages"]
 	question.Images = []string{}
+	question.Solution = ""
+	solutionImage := r.MultipartForm.File["solutionImage"]
+	if len(solutionImage) > 0 {
+		fileHeader := solutionImage[0]
+		imagePath := fmt.Sprintf("%ssol.png", question.ID.Hex())
+		err := utility.SaveImageToFile(fileHeader, imagePath, question.Q_id, "questions")
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to save Solution Image File", http.StatusInternalServerError)
+			return
+		}
+		question.Solution = imagePath
+	}
 	for i, fileHeader := range questionImages {
 		// Save the uploaded file to the "assets" directory
 		imageName := fmt.Sprintf("%s%d.png", question.Q_id, i)
@@ -307,6 +320,19 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 	questionImages := r.MultipartForm.File["questionImages"]
 	updatedQuestion.Images = []string{}
+	updatedQuestion.Solution = ""
+	solutionImage := r.MultipartForm.File["solutionImage"]
+	if len(solutionImage) > 0 {
+		fileHeader := solutionImage[0]
+		imagePath := fmt.Sprintf("%ssol.png", questionID)
+		err := utility.SaveImageToFile(fileHeader, imagePath, questionID, "questions")
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Failed to save Solution Image File", http.StatusInternalServerError)
+			return
+		}
+		updatedQuestion.Solution = imagePath
+	}
 	for i, fileHeader := range questionImages {
 		// Save the uploaded file to the "assets" directory
 		imageName := fmt.Sprintf("%s%d.png", questionID, i)
@@ -387,6 +413,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		"correctanswer":  updatedQuestion.CorrectAnswer,
 		"subject_tags":   updatedQuestion.Subject_Tags,
 		"correctanswers": updatedQuestion.CorrectAnswers,
+		"solution":       updatedQuestion.Solution,
 	}}
 
 	result, err := questionCollection.UpdateOne(context.Background(), filter, update)
@@ -479,6 +506,10 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 		question.Options[1].Image = ""
 		question.Options[2].Image = ""
 		question.Options[3].Image = ""
+
+		if question.Type == "Multiple Choice" {
+			question.CorrectAnswers = strings.Split(record[5], ", ")
+		}
 
 		qid := question.ID.Hex()
 		mid[record[4]] = len(questions)

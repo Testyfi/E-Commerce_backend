@@ -22,6 +22,7 @@ type Question struct {
 	Subject_Tags   []string           `json:"subjectTags"`
 	Q_id           string             `json:"qid"`
 	UsedBy         []string           `json:"usedBy"`
+	Solution       string             `json:"solution"`
 }
 
 type QPaper struct {

@@ -33,8 +33,11 @@ jobs:
       run: |
         echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
         ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+        sudo service testify stop
         cd /var/www/html/backend &&
         rm main'
         rsync -avz -e "ssh -i private_key" main  ubuntu@ec2-3-111-78-168.ap-south-1.compute.amazonaws.com:/var/www/html/backend/
+        ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+        sudo service testify start'
 
 
