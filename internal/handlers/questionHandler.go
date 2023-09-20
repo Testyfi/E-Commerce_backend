@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	s3 "testify/aws"
 	database "testify/database"
 	models "testify/internal/models"
 	utility "testify/internal/utility"
@@ -496,7 +499,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 			Created_at:     time.Now(),
 			Options:        make([]models.Option, 4),
 			CorrectAnswers: []string{},
-			Images:         []string{},
+			Images:         strings.Split(record[1], ", "),
 		}
 		question.Options[0].Text = ""
 		question.Options[1].Text = ""
@@ -548,14 +551,78 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 		qid := optionRecord[2]
 		optionText := optionRecord[0]
+		optionImage := optionRecord[1]
 		questions[mid[qid]].Options[oid[qid]].Text = optionText
+		questions[mid[qid]].Options[oid[qid]].Image = optionImage
 		oid[qid]++
 	}
 
-	for _, question := range questions {
+	for i := 0; i < len(questions); i++ {
+
+		for j := 0; j < len(questions[i].Images); j++ {
+			resp, err := http.Get(questions[i].Images[j])
+			if err != nil {
+				http.Error(w, "Some Images were not able to be added", http.StatusInternalServerError)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
+			}
+
+			var imageBuffer bytes.Buffer
+			_, err = io.Copy(&imageBuffer, resp.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			imageName := fmt.Sprintf("%s%v", questions[i].Q_id, j)
+			questions[i].Images[j] = imageName
+			imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
+			s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
+
+		}
+		for j := 0; j < 4; j++ {
+			resp, err := http.Get(questions[i].Options[j].Image)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Some Images were not able to be added", http.StatusInternalServerError)
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				fmt.Println(err)
+				http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
+			}
+
+			var imageBuffer bytes.Buffer
+			_, err = io.Copy(&imageBuffer, resp.Body)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Error adding Images.", http.StatusInternalServerError)
+				return
+			}
+			var opt string
+			switch j {
+			case 0:
+				opt = "A"
+			case 1:
+				opt = "B"
+			case 2:
+				opt = "C"
+			case 3:
+				opt = "D"
+			}
+			imageName := fmt.Sprintf("%s%s", questions[i].Q_id, opt)
+			questions[i].Options[j].Image = imageName
+			imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
+			s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
+		}
 
 		// Inserting Question
-		_, err = questionCollection.InsertOne(context.Background(), question)
+		_, err = questionCollection.InsertOne(context.Background(), questions[i])
 		if err != nil {
 			fmt.Println(err)
 			http.Error(w, "Failed to insert record into the database", http.StatusInternalServerError)

@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"bytes"
 	"fmt"
 	"mime/multipart"
 
@@ -19,6 +20,25 @@ func UploadObject(bucket string, fileName string, sess *session.Session, awsConf
 		Bucket:      aws.String(bucket),
 		Key:         aws.String(fileName),
 		Body:        file,
+		ContentType: aws.String("image/png"),
+	})
+
+	if err != nil {
+		fmt.Printf("failed to upload object, %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Successfully uploaded %q to %q\n", fileName, bucket)
+	return nil
+}
+
+func URLImageUpooad(bucket string, fileName string, sess *session.Session, awsConfig AWSConfig, file bytes.Buffer) error {
+
+	uploader := s3manager.NewUploader(sess)
+	_, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(fileName),
+		Body:        bytes.NewReader(file.Bytes()),
 		ContentType: aws.String("image/png"),
 	})
 
