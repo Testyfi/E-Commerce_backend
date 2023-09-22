@@ -268,7 +268,9 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 			question.Options[3].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[3].Image)
 		}
 	}
-	question.Solution = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Solution)
+	if len(question.Solution) > 0 {
+		question.Solution = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Solution)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(question)
 
@@ -496,7 +498,8 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 			Subject_Tags:   strings.Split(record[3], ", "),
 			Q_id:           record[4],
 			ID:             primitive.NewObjectID(),
-			CorrectAnswer:  record[5],
+			CorrectAnswer:  record[6],
+			Solution:       record[5],
 			Created_at:     time.Now(),
 			Options:        make([]models.Option, 4),
 			CorrectAnswers: []string{},
@@ -514,8 +517,9 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 		if len(question.Images) > 0 && question.Images[0] == "" {
 			question.Images = []string{}
 		}
+
 		if question.Type == "Multiple Choice" {
-			question.CorrectAnswers = strings.Split(record[5], ", ")
+			question.CorrectAnswers = strings.Split(record[6], ", ")
 		}
 
 		qid := question.ID.Hex()
@@ -574,6 +578,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 			if resp.StatusCode != http.StatusOK {
 				http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
+				return
 			}
 
 			var imageBuffer bytes.Buffer
@@ -582,12 +587,38 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			imageName := fmt.Sprintf("%s%v", questions[i].Q_id, j)
+			imageName := fmt.Sprintf("%s%v.png", questions[i].Q_id, j)
 			questions[i].Images[j] = imageName
 			imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
 			s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
 
 		}
+
+		if questions[i].Solution != "" {
+			resp, err := http.Get(questions[i].Solution)
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, "Some Images were not able to be added", http.StatusInternalServerError)
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
+				return
+			}
+
+			var imageBuffer bytes.Buffer
+			_, err = io.Copy(&imageBuffer, resp.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			imageName := fmt.Sprintf("%ssol.png", questions[i].Q_id)
+			questions[i].Solution = imageName
+			imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
+			s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
+		}
+
 		for j := 0; j < 4; j++ {
 			if len(questions[i].Options[j].Image) > 0 {
 
@@ -602,6 +633,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 				if resp.StatusCode != http.StatusOK {
 					fmt.Println(err)
 					http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
+					return
 				}
 
 				var imageBuffer bytes.Buffer
@@ -622,7 +654,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 				case 3:
 					opt = "D"
 				}
-				imageName := fmt.Sprintf("%s%s", questions[i].Q_id, opt)
+				imageName := fmt.Sprintf("%s%s.png", questions[i].Q_id, opt)
 				questions[i].Options[j].Image = imageName
 				imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
 				s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
