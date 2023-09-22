@@ -510,6 +510,9 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 		question.Options[2].Image = ""
 		question.Options[3].Image = ""
 
+		if len(question.Images) > 0 && question.Images[0] == "" {
+			question.Images = []string{}
+		}
 		if question.Type == "Multiple Choice" {
 			question.CorrectAnswers = strings.Split(record[5], ", ")
 		}
@@ -562,6 +565,7 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 		for j := 0; j < len(questions[i].Images); j++ {
 			resp, err := http.Get(questions[i].Images[j])
 			if err != nil {
+				fmt.Println(err)
 				http.Error(w, "Some Images were not able to be added", http.StatusInternalServerError)
 				return
 			}
@@ -584,41 +588,44 @@ func UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 		}
 		for j := 0; j < 4; j++ {
-			resp, err := http.Get(questions[i].Options[j].Image)
-			if err != nil {
-				fmt.Println(err)
-				http.Error(w, "Some Images were not able to be added", http.StatusInternalServerError)
-				return
-			}
-			defer resp.Body.Close()
+			if len(questions[i].Options[j].Image) > 0 {
 
-			if resp.StatusCode != http.StatusOK {
-				fmt.Println(err)
-				http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
-			}
+				resp, err := http.Get(questions[i].Options[j].Image)
+				if err != nil {
+					fmt.Println(err)
+					http.Error(w, "Some Images were not able to be added", http.StatusInternalServerError)
+					return
+				}
+				defer resp.Body.Close()
 
-			var imageBuffer bytes.Buffer
-			_, err = io.Copy(&imageBuffer, resp.Body)
-			if err != nil {
-				fmt.Println(err)
-				http.Error(w, "Error adding Images.", http.StatusInternalServerError)
-				return
+				if resp.StatusCode != http.StatusOK {
+					fmt.Println(err)
+					http.Error(w, "Error adding Images. Please check the image URLs are correct", http.StatusInternalServerError)
+				}
+
+				var imageBuffer bytes.Buffer
+				_, err = io.Copy(&imageBuffer, resp.Body)
+				if err != nil {
+					fmt.Println(err)
+					http.Error(w, "Error adding Images.", http.StatusInternalServerError)
+					return
+				}
+				var opt string
+				switch j {
+				case 0:
+					opt = "A"
+				case 1:
+					opt = "B"
+				case 2:
+					opt = "C"
+				case 3:
+					opt = "D"
+				}
+				imageName := fmt.Sprintf("%s%s", questions[i].Q_id, opt)
+				questions[i].Options[j].Image = imageName
+				imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
+				s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
 			}
-			var opt string
-			switch j {
-			case 0:
-				opt = "A"
-			case 1:
-				opt = "B"
-			case 2:
-				opt = "C"
-			case 3:
-				opt = "D"
-			}
-			imageName := fmt.Sprintf("%s%s", questions[i].Q_id, opt)
-			questions[i].Options[j].Image = imageName
-			imageName = fmt.Sprintf("%s/%s/%s/%s", "assets", "questions", questions[i].Q_id, imageName)
-			s3.URLImageUpooad("testify-jee", imageName, s3.CreateSession(utility.AwsConfig), utility.AwsConfig, imageBuffer)
 		}
 
 		// Inserting Question
