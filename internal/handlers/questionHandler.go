@@ -268,6 +268,7 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 			question.Options[3].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[3].Image)
 		}
 	}
+	question.Solution = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Solution)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(question)
 
