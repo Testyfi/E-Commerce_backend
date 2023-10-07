@@ -23,6 +23,8 @@ type Question struct {
 	Q_id           string             `json:"qid"`
 	UsedBy         []string           `json:"usedBy"`
 	Solution       string             `json:"solution"`
+	List1          []string           `json:"list1"`
+	List2          []string           `json:"list2"`
 }
 
 type QPaper struct {

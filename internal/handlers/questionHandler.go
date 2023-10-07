@@ -128,7 +128,10 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Question already exists!", http.StatusConflict)
 		return
 	}
-
+	if question.Type != "List Type" {
+		question.List1 = []string{}
+		question.List2 = []string{}
+	}
 	question.ID = primitive.NewObjectID()
 	question.Q_id = question.ID.Hex()
 	question.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
@@ -254,20 +257,20 @@ func GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < len(question.Images); i++ {
 		question.Images[i] = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Images[i])
 	}
-	if question.Type == "Single Correct" || question.Type == "Multiple Choice" {
-		if len(question.Options[0].Image) > 0 {
-			question.Options[0].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[0].Image)
-		}
-		if len(question.Options[1].Image) > 0 {
-			question.Options[1].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[1].Image)
-		}
-		if len(question.Options[2].Image) > 0 {
-			question.Options[2].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[2].Image)
-		}
-		if len(question.Options[3].Image) > 0 {
-			question.Options[3].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[3].Image)
-		}
+
+	if len(question.Options[0].Image) > 0 {
+		question.Options[0].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[0].Image)
 	}
+	if len(question.Options[1].Image) > 0 {
+		question.Options[1].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[1].Image)
+	}
+	if len(question.Options[2].Image) > 0 {
+		question.Options[2].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[2].Image)
+	}
+	if len(question.Options[3].Image) > 0 {
+		question.Options[3].Image = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Options[3].Image)
+	}
+
 	if len(question.Solution) > 0 {
 		question.Solution = fmt.Sprintf("%s/%s/%s", questionsAWS_S3_API, questionID, question.Solution)
 	}
@@ -323,6 +326,10 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error deleting questions")
 		return
+	}
+	if updatedQuestion.Type != "List Type" {
+		updatedQuestion.List1 = []string{}
+		updatedQuestion.List2 = []string{}
 	}
 	questionImages := r.MultipartForm.File["questionImages"]
 	updatedQuestion.Images = []string{}
@@ -420,6 +427,8 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		"subject_tags":   updatedQuestion.Subject_Tags,
 		"correctanswers": updatedQuestion.CorrectAnswers,
 		"solution":       updatedQuestion.Solution,
+		"list1":          updatedQuestion.List1,
+		"list2":          updatedQuestion.List2,
 	}}
 
 	result, err := questionCollection.UpdateOne(context.Background(), filter, update)

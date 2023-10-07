@@ -118,6 +118,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.Token = &token
 	user.Refresh_token = &refreshToken
 	user.Wallet = 0
+	user.Otp = utility.GenerateRandomCode()
 
 	referral := user.ReferralCode
 	if len(referral) == 18 && referral[:8] == "testify@" {
@@ -132,6 +133,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Referral Code", http.StatusNotFound)
 		return
 	}
+	name := *user.First_name
 
 	// Create the user in the database
 	insertResult, err := userCollection.InsertOne(context.Background(), user)
@@ -140,12 +142,13 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	println(insertResult)
-	verificationLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/userverify" + "?user_id=" + user.User_id + "&secret=" + user.SecretCode)
-	err = utility.SendMail("click on this link to verify your email. "+verificationLink, *user.Email, "Email Verification")
+	verificationLink := fmt.Sprint("Your OTP for Email verification is " + user.SecretCode)
+	err = utility.SendMail(verificationLink, *user.Email, "Email Verification")
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	utility.SMS("160066", []string{name, user.Otp}, []string{*user.Phone})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -479,6 +482,7 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 func UserVerification(w http.ResponseWriter, r *http.Request) {
 	userId := r.URL.Query().Get("user_id")
 	secret := r.URL.Query().Get("secret")
+	otp := r.URL.Query().Get("otp")
 
 	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
 	if err != nil {
@@ -486,7 +490,7 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	if user.Verified == false && user.SecretCode == secret {
+	if user.Verified == false && user.SecretCode == secret && user.Otp == otp {
 		user.Verified = true
 		result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
 			"verified": user.Verified,
@@ -494,7 +498,7 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println(err)
-			fmt.Fprintf(w, "Error verifying email")
+			fmt.Fprintf(w, "Incorrect OTP")
 			return
 		}
 

@@ -5,7 +5,7 @@ go 1.19
 require go.mongodb.org/mongo-driver v1.11.6
 
 require (
-	github.com/aws/aws-sdk-go v1.45.6 // indirect
+	github.com/aws/aws-sdk-go v1.45.21 // indirect
 	github.com/go-chi/cors v1.2.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

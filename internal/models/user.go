@@ -26,4 +26,5 @@ type User struct {
 	Verified       bool                         `json:"verified"`
 	SecretCode     string                       `json:"secret_code"`
 	ResetCode      string                       `json:"reset_code"`
+	Otp            string                       `json:"otp"`
 }
