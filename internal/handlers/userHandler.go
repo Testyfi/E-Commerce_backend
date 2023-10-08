@@ -26,6 +26,7 @@ import (
 var validate = validator.New()
 var user models.User
 var userCollection *mongo.Collection = database.OpenCollection(database.Client, "user")
+var otpcollection *mongo.Collection = database.OpenCollection(database.Client, "otp")
 
 type QuestionStat struct {
 	QuestionID    string `json:"qid"`
@@ -76,7 +77,7 @@ func VerifyPassword(userPassword string, providedPassword string) (bool, string)
 	return check, msg
 }
 
-func SignUp(w http.ResponseWriter, r *http.Request) {
+func UserVerification(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		fmt.Println(err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -113,46 +114,116 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	user.Profile = "https://static.vecteezy.com/system/resources/previews/005/544/718/original/profile-icon-design-free-vector.jpg"
 	user.Purchased = false
 	user.Verified = false
-	user.SecretCode = utility.GenerateRandomCode()
 	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
 	user.Refresh_token = &refreshToken
 	user.Wallet = 0
-	user.Otp = utility.GenerateRandomCode()
 
-	referral := user.ReferralCode
-	if len(referral) == 18 && referral[:8] == "testify@" {
-		number := referral[8:]
-		var referer models.User
-		err := userCollection.FindOne(context.Background(), bson.M{"phone": number}).Decode(&referer)
+	var otp models.OTP
+	err = otpcollection.FindOne(context.Background(), bson.M{"email": user.Email}).Decode(&otp)
+	if err != nil {
+		http.Error(w, "Invalid OTP", http.StatusUnauthorized)
+		return
+	}
+
+	if user.Verified == false && user.SecretCode == otp.SecretCode && user.Otp == otp.Otp {
+		user.Verified = true
+
+		referral := user.ReferralCode
+		if len(referral) == 18 && referral[:8] == "testify@" {
+			number := referral[8:]
+			var referer models.User
+			err := userCollection.FindOne(context.Background(), bson.M{"phone": number}).Decode(&referer)
+
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusNotFound)
+				return
+			}
+			referer.Wallet += 200
+			filter := bson.M{"user_id": referer.User_id}
+			update := bson.M{"$set": bson.M{
+				"wallet": referer.Wallet,
+			}}
+
+			result, err := userCollection.UpdateOne(context.Background(), filter, update)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			fmt.Println(result)
+		}
+
+		result, err := userCollection.InsertOne(context.Background(), user)
 		if err != nil {
-			http.Error(w, "Invalid Referral Code", http.StatusNotFound)
+			http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else if referral != "" {
-		http.Error(w, "Invalid Referral Code", http.StatusNotFound)
+		println(result)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Verified Successfully! Please Login now."))
 		return
 	}
-	name := *user.First_name
 
-	// Create the user in the database
-	insertResult, err := userCollection.InsertOne(context.Background(), user)
+	http.Error(w, "404 Not Found", http.StatusNotFound)
+}
+
+func SignUp(w http.ResponseWriter, r *http.Request) {
+	var otp models.OTP
+	if err := json.NewDecoder(r.Body).Decode(&otp); err != nil {
+		fmt.Println(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Checking if user already exists
+	alreadyExists, err := userCollection.CountDocuments(context.Background(), bson.M{"email": otp.Email})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	println(insertResult)
-	verificationLink := fmt.Sprint("Your OTP for Email verification is " + user.SecretCode)
-	err = utility.SendMail(verificationLink, *user.Email, "Email Verification")
+	if alreadyExists > 0 {
+		http.Error(w, "User already exists!", http.StatusConflict)
+		return
+	}
+	alreadyExists, err = otpcollection.CountDocuments(context.Background(), bson.M{"email": otp.Email})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	utility.SMS("160066", []string{name, user.Otp}, []string{*user.Phone})
+	if alreadyExists > 0 {
+		http.Error(w, "An OTP has already been sent. Please verify or wait for sometime to request OTP again", http.StatusConflict)
+		return
+	}
 
-	w.Header().Set("Content-Type", "application/json")
+	otp.SecretCode = utility.GenerateRandomCode()
+	otp.Otp = utility.GenerateRandomCode()
+	verificationLink := fmt.Sprintf("Your OTP for Email verification is %s", otp.SecretCode)
+	err = utility.SendMail(verificationLink, *otp.Email, "Email Verification")
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	utility.SMS("160066", []string{*otp.First_name, otp.Otp}, []string{*otp.Phone})
+
+	otp.CreatedAt = time.Now()
+
+	_, err = otpcollection.InsertOne(context.Background(), otp)
+	if err != nil {
+		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "createdat", Value: 1}},
+		Options: options.Index().SetExpireAfterSeconds(300), // 5 minutes in seconds
+	}
+	_, err = otpcollection.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		// Handle the error if creating the TTL index fails
+		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("SignUp Successful! Please verify your email ID and then Login"))
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -477,62 +548,6 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
-}
-
-func UserVerification(w http.ResponseWriter, r *http.Request) {
-	userId := r.URL.Query().Get("user_id")
-	secret := r.URL.Query().Get("secret")
-	otp := r.URL.Query().Get("otp")
-
-	err := userCollection.FindOne(context.Background(), bson.M{"user_id": userId}).Decode(&user)
-	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-	if user.Verified == false && user.SecretCode == secret && user.Otp == otp {
-		user.Verified = true
-		result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": userId}, bson.M{"$set": bson.M{
-			"verified": user.Verified,
-		}})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Println(err)
-			fmt.Fprintf(w, "Incorrect OTP")
-			return
-		}
-
-		referral := user.ReferralCode
-		if len(referral) == 18 && referral[:8] == "testify@" {
-			number := referral[8:]
-			var referer models.User
-			err := userCollection.FindOne(context.Background(), bson.M{"phone": number}).Decode(&referer)
-
-			if err != nil {
-				http.Error(w, "Internal Server Error", http.StatusNotFound)
-				return
-			}
-			referer.Wallet += 200
-			filter := bson.M{"user_id": referer.User_id}
-			update := bson.M{"$set": bson.M{
-				"wallet": referer.Wallet,
-			}}
-
-			result, err := userCollection.UpdateOne(context.Background(), filter, update)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			fmt.Println(result)
-		}
-
-		println(result)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Verified Successfully! Please Login now."))
-		return
-	}
-
-	http.Error(w, "404 Not Found", http.StatusNotFound)
 }
 
 func ResetPassword(w http.ResponseWriter, r *http.Request) {

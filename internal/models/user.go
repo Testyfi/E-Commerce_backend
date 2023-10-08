@@ -24,12 +24,16 @@ type User struct {
 	Wallet         int                          `json:"wallet"`
 	Purchased      bool                         `json:"purchased"`
 	Verified       bool                         `json:"verified"`
-	SecretCode     string                       `json:"secret_code"`
 	ResetCode      string                       `json:"reset_code"`
+	SecretCode     string                       `json:"secret_code"`
 	Otp            string                       `json:"otp"`
 }
 
 type OTP struct {
-	Email *string `json:"email" validate:"email,required"`
-	Phone *string `json:"phone" validate:"required,len=10,numeric"`
+	Email      *string   `json:"email" validate:"email,required"`
+	Phone      *string   `json:"phone" validate:"required,len=10,numeric"`
+	First_name *string   `json:"first_name" validate:"max=100,required"`
+	SecretCode string    `json:"secret_code"`
+	Otp        string    `json:"otp"`
+	CreatedAt  time.Time `json:"createdat"`
 }

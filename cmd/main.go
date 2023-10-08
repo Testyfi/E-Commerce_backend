@@ -40,7 +40,7 @@ func main() {
 	// User Routes
 	r.Post("/userlogin", handlers.Login)
 	r.Post("/usersignup", handlers.SignUp)
-	r.Get("/userverify", handlers.UserVerification)
+	r.Post("/userverify", handlers.UserVerification)
 	r.Post("/forgotpass", handlers.ForgotPassword)
 	r.Get("/reset", handlers.ResetPassword)
 	r.Route("/users", func(r chi.Router) {
