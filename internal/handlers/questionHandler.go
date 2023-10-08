@@ -128,7 +128,7 @@ func CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Question already exists!", http.StatusConflict)
 		return
 	}
-	if question.Type != "List Type" {
+	if question.Type != "List-Type" {
 		question.List1 = []string{}
 		question.List2 = []string{}
 	}
@@ -327,7 +327,7 @@ func EditQuestion(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error deleting questions")
 		return
 	}
-	if updatedQuestion.Type != "List Type" {
+	if updatedQuestion.Type != "List-Type" {
 		updatedQuestion.List1 = []string{}
 		updatedQuestion.List2 = []string{}
 	}

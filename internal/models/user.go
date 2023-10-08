@@ -28,3 +28,8 @@ type User struct {
 	ResetCode      string                       `json:"reset_code"`
 	Otp            string                       `json:"otp"`
 }
+
+type OTP struct {
+	Email *string `json:"email" validate:"email,required"`
+	Phone *string `json:"phone" validate:"required,len=10,numeric"`
+}

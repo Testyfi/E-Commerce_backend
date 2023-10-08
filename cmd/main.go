@@ -29,7 +29,7 @@ func main() {
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{os.Getenv("STUDENT_FRONTEND_URL"), os.Getenv("ADMIN_FRONTEND_URL"), "http://localhost:4200"},
+		AllowedOrigins:   []string{os.Getenv("STUDENT_FRONTEND_URL"), os.Getenv("ADMIN_FRONTEND_URL")},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
