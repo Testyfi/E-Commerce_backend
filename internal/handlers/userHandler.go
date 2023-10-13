@@ -214,7 +214,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 	indexModel := mongo.IndexModel{
 		Keys:    bson.D{{Key: "createdat", Value: 1}},
-		Options: options.Index().SetExpireAfterSeconds(300), // 5 minutes in seconds
+		Options: options.Index().SetExpireAfterSeconds(60), // 1 minutes in seconds
 	}
 	_, err = otpcollection.Indexes().CreateOne(context.Background(), indexModel)
 	if err != nil {
