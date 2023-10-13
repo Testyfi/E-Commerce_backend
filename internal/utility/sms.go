@@ -19,4 +19,5 @@ func SMS(message string, variables []string, numbers []string) {
 		return
 	}
 	defer resp.Body.Close()
+	fmt.Println(resp)
 }
