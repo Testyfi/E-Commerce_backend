@@ -185,6 +185,17 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User already exists!", http.StatusConflict)
 		return
 	}
+	// Checking if phone already exists
+	alreadyExists, err = userCollection.CountDocuments(context.Background(), bson.M{"phone": otp.Email})
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if alreadyExists > 0 {
+		http.Error(w, "Phone number already exists!", http.StatusConflict)
+		return
+	}
+
 	alreadyExists, err = otpcollection.CountDocuments(context.Background(), bson.M{"email": otp.Email})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
