@@ -1,35 +1,23 @@
 package utility
 
 import (
+	"fmt"
 	"net/smtp"
 	"os"
 )
 
 func SendMail(msg string, receiver string, subject string) error {
-	// Sender data.
 	from := os.Getenv("MAILING_ADDRESS")
 	password := os.Getenv("MAILING_SERVICE_PSWD")
 
-	// smtp server configuration.
+	// SMTP server configuration.
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
-
-	//  Message.
-	message := []byte(
-		"From: Testify\r\n" +
-			"To: " + receiver + "\r\n" +
-			"Subject: " + subject + "\r\n\r\n" +
-			msg,
-	)
-
-	// Authentication.
 	auth := smtp.PlainAuth("", from, password, smtpHost)
 
-	// // Sending email.
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{receiver}, message)
-	if err != nil {
-		return err
-	}
+	return smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{receiver}, buildMessage(from, receiver, subject, msg))
+}
 
-	return nil
+func buildMessage(from string, to string, subject string, msg string) []byte {
+	return []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s", from, to, subject, msg))
 }
