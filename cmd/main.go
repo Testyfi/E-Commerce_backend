@@ -77,6 +77,11 @@ func main() {
 		r.Get("/verify", handlers.VerifyAdminToken)
 	})
 
+	r.Route("/payment", func(r chi.Router) {
+		// r.Use(handlers.AuthenticationMiddleware)
+		r.Get("/phonepay/request", handlers.GetPaymentRequestUrl)
+	})
+
 	// Start the server
 	fmt.Println("Server is running on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
