@@ -1,43 +1,36 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
 name: Go
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.20'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.20"
 
-    - name: Build
-      run: go build cmd/main.go
+      - name: Build
+        run: go build cmd/main.go
 
-    - name: Remove existing files from working directory and Deploy to EC2
-      env:
-        PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        HOSTNAME: ec2-3-111-78-168.ap-south-1.compute.amazonaws.com
-        USER_NAME: ubuntu
-      run: |
-        echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-        ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-        sudo service testify stop
-        cd /var/www/html/backend &&
-        rm main'
-        rsync -avz -e "ssh -i private_key" main  ubuntu@ec2-3-111-78-168.ap-south-1.compute.amazonaws.com:/var/www/html/backend/
-        ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-        sudo service testify start'
-
-
+      - name: Remove existing files from working directory and Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOSTNAME: ec2-3-111-78-168.ap-south-1.compute.amazonaws.com
+          USER_NAME: ubuntu
+        run: |
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+          sudo service testify stop
+          cd /var/www/html/backend &&
+          rm main'
+          rsync -avz -e "ssh -i private_key" main  ubuntu@ec2-3-111-78-168.ap-south-1.compute.amazonaws.com:/var/www/html/backend/
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
+          sudo service testify start'
