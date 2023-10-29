@@ -6,6 +6,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type contextKey string
+
+const ContextUser contextKey = "user"
+
 type User struct {
 	ID             primitive.ObjectID           `bson:"_id"`
 	First_name     *string                      `json:"first_name" validate:"max=100,required"`

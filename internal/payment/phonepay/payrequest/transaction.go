@@ -10,5 +10,5 @@ type TransactionRequest struct {
 }
 
 type TransactionResponse struct {
-	RedirectUrl string
+	RedirectUrl string `json:"redirect_url"`
 }

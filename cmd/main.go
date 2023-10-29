@@ -78,8 +78,8 @@ func main() {
 	})
 
 	r.Route("/payment", func(r chi.Router) {
-		// r.Use(handlers.AuthenticationMiddleware)
-		r.Get("/phonepay/request", handlers.GetPaymentRequestUrl)
+		r.Use(handlers.AuthenticationMiddleware)
+		r.Post("/phonepay/request", handlers.GetPaymentRequestUrl)
 	})
 
 	// Start the server

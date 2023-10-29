@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"strings"
+	"testify/internal/models"
 	utility "testify/internal/utility"
+	http2 "testify/internal/utility/http"
 )
 
 func AuthenticationMiddleware(next http.Handler) http.Handler {
@@ -16,7 +21,7 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 		tokenString = strings.Split(tokenString, " ")[1]
 
 		// Validate the JWT token
-		claims, errMsg := utility.ValidateToken(tokenString)
+		authDetails, errMsg := utility.ValidateToken(tokenString)
 		if errMsg != "" {
 			claims, errMsg := utility.ValidateAdminToken(tokenString)
 			if errMsg != "" {
@@ -28,8 +33,16 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		errMsg = claims.Email
-		next.ServeHTTP(w, r)
+
+		err := userCollection.FindOne(context.Background(), bson.M{"user_id": authDetails.Uid}).Decode(&user)
+		if err != nil {
+			fmt.Println(err)
+			http2.RespondError(w, http.StatusUnauthorized, err.Error(), err)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), models.ContextUser, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
