@@ -21,7 +21,7 @@ type paymentRequest struct {
 	PaymentInstrument     paymentInstrument `json:"paymentInstrument"`
 }
 
-type FinalRequestBody struct {
+type finalRequestBody struct {
 	Request string `json:"request"`
 }
 

@@ -20,20 +20,20 @@ func getDefaultPayCallbackUrl() string {
 	return "https://webhook.site/callback-url"
 }
 
-func generatePayRequestSignature(payload []byte) (string, error) {
+func generatePayRequestSignature(payload []byte) (finalRequestBody, string, error) {
 	saltKey := os.Getenv("SALT_KEY")
 	saltIndex := os.Getenv("SALT_INDEX")
 
 	if saltKey == "" {
-		return "", fmt.Errorf("salt key is not provided")
+		return finalRequestBody{}, "", fmt.Errorf("salt key is not provided")
 	}
 
 	if saltIndex == "" {
-		return "", fmt.Errorf("salt index is not provided")
+		return finalRequestBody{}, "", fmt.Errorf("salt index is not provided")
 	}
 
 	encodedPayload := base64.StdEncoding.EncodeToString(payload)
 	toHash := encodedPayload + phonepay.PayEndPoint + saltKey
 	hash := sha256.Sum256([]byte(toHash))
-	return fmt.Sprintf("%x###%s", hash, saltIndex), nil
+	return finalRequestBody{Request: encodedPayload}, fmt.Sprintf("%x###%s", hash, saltIndex), nil
 }

@@ -1,9 +1,9 @@
 package payrequest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 	httpClient "testify/internal/utility/http"
 )
 
@@ -22,16 +22,18 @@ func PayRequest(payload TransactionRequest) (TransactionResponse, error) {
 	}
 
 	// generate signature
-	xVerify, err := generatePayRequestSignature(payloadJSON)
+	finalRequest, xVerify, err := generatePayRequestSignature(payloadJSON)
 
 	if err != nil {
 		return TransactionResponse{}, fmt.Errorf("error: %s", err)
 	}
 
+	reqBody, _ := json.Marshal(finalRequest)
+
 	// make post request to get url
 	client := httpClient.NewHttpClient()
 
-	response, err := client.Post(getPayRequestEndPoint(), strings.NewReader(""),
+	response, err := client.Post(getPayRequestEndPoint(), bytes.NewReader(reqBody),
 		httpClient.WithHeader("X-VERIFY", xVerify))
 
 	if err != nil {
@@ -45,5 +47,7 @@ func PayRequest(payload TransactionRequest) (TransactionResponse, error) {
 		return TransactionResponse{}, fmt.Errorf("failed to unmarshal response: %s", err)
 	}
 
-	return TransactionResponse{}, nil
+	return TransactionResponse{
+		RedirectUrl: paymentResp.Data.InstrumentResponse.RedirectInfo.URL,
+	}, nil
 }

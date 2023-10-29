@@ -10,11 +10,15 @@ type instrumentResponse struct {
 	RedirectInfo redirectInfo `json:"redirectInfo"`
 }
 
-type paymentResponse struct {
-	Success               bool               `json:"success"`
-	Code                  string             `json:"code"`
-	Message               string             `json:"message"`
+type Data struct {
 	MerchantID            string             `json:"merchantId"`
 	MerchantTransactionID string             `json:"merchantTransactionId"`
 	InstrumentResponse    instrumentResponse `json:"instrumentResponse"`
+}
+
+type paymentResponse struct {
+	Success bool   `json:"success"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Data    Data   `json:"data"`
 }
