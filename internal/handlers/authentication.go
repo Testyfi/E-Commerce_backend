@@ -2,13 +2,11 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"strings"
 	"testify/internal/models"
 	utility "testify/internal/utility"
-	http2 "testify/internal/utility/http"
 )
 
 func AuthenticationMiddleware(next http.Handler) http.Handler {
@@ -36,9 +34,10 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 
 		err := userCollection.FindOne(context.Background(), bson.M{"user_id": authDetails.Uid}).Decode(&user)
 		if err != nil {
-			fmt.Println(err)
-			http2.RespondError(w, http.StatusUnauthorized, err.Error(), err)
-			return
+			// Ignore at the moment
+			// fmt.Println(err)
+			// http2.RespondError(w, http.StatusUnauthorized, err.Error(), err)
+			// return
 		}
 
 		ctx := context.WithValue(r.Context(), models.ContextUser, user)
