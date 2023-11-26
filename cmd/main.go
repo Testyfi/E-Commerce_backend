@@ -81,6 +81,10 @@ func main() {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/phonepay/request", handlers.GetPaymentRequestUrl)
 	})
+	r.Route("/rankbooster/past", func(r chi.Router) {
+		r.Use(handlers.AuthenticationMiddleware)
+		r.Get("/tag/{tag}", handlers.GetPastTest)
+	})
 
 	// Start the server
 	fmt.Println("Server is running on http://localhost:8080")
