@@ -23,8 +23,8 @@ func GetPastTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
     ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
-	cursor,err:=qpaperCollection.Find(ctx,bson.M{})
-
+	cursor,err:=questionCollection.Find(ctx,bson.M{"subject_tags":t.Tag})
+    defer cursor.Close(ctx)
 	if err !=nil{
 
 		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
@@ -35,6 +35,7 @@ func GetPastTest(w http.ResponseWriter, r *http.Request) {
 		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
 		return
 	}
-
+    // fmt.Println(questions)
+	 
 	httpClient.RespondSuccess(w, questions)
 }

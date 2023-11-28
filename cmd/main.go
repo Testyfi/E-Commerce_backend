@@ -81,9 +81,9 @@ func main() {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/phonepay/request", handlers.GetPaymentRequestUrl)
 	})
-	r.Route("/rankbooster/past", func(r chi.Router) {
+	r.Route("/rankbooster", func(r chi.Router) {
 		r.Use(handlers.AuthenticationMiddleware)
-		r.Get("/tag/{tag}", handlers.GetPastTest)
+		r.Post("/pasttest", handlers.GetPastTest)
 	})
 
 	// Start the server
