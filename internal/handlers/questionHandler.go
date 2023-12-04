@@ -24,6 +24,7 @@ import (
 )
 
 var questionCollection *mongo.Collection = database.OpenCollection(database.Client, "question")
+var testpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "testpaper")
 var qpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "qpaper")
 var questionsAWS_S3_API string = "https://testify-jee.s3.ap-south-1.amazonaws.com/assets/questions"
 

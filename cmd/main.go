@@ -85,6 +85,10 @@ func main() {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/pasttest", handlers.GetPastTest)
 	})
+	r.Route("/rankbooster", func(r chi.Router) {
+		r.Use(handlers.AuthenticationMiddleware)
+		r.Post("/livetest", handlers.GetLiveTest)
+	})
 
 	// Start the server
 	fmt.Println("Server is running on http://localhost:8080")
