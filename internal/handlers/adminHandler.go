@@ -8,6 +8,7 @@ import (
 	database "testify/database"
 	models "testify/internal/models"
 	utility "testify/internal/utility"
+	httpClient "testify/internal/utility/http"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -166,3 +167,57 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 
 	return
 }
+func CreateTest(w http.ResponseWriter, r *http.Request){
+
+	var PaperDetails struct {
+		Name       string `json:"Name"`
+		Start      string `json:"Start"`
+		StartAt    string `json:"StartAt"`
+		Difficulty string `json:"Difficulty"`
+		Topics     string `json:"Topics"`
+		Duration   string `json:"Duration"`
+		Prize      string `json:"Prize"`
+	}
+	
+	
+		err := json.NewDecoder(r.Body).Decode(&PaperDetails)
+	
+		if err != nil {
+			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid testname", err)
+			return
+		}
+	testdetailsCollection.InsertOne(context.TODO(),PaperDetails)
+	httpClient.RespondSuccess(w,"Success")
+}
+func GetAllTestDetails(w http.ResponseWriter, r *http.Request){
+
+	type PaperDetails struct {
+		Name       string `json:"Name"`
+		Start      string `json:"Start"`
+		StartAt    string `json:"StartAt"`
+		Difficulty string `json:"Difficulty"`
+		Topics     string `json:"Topics"`
+		Duration   string `json:"Duration"`
+		Prize      string `json:"Prize"`
+	}
+	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
+	cursor,err:=testdetailsCollection.Find(ctx,bson.M{})
+	defer cursor.Close(ctx)
+	if err !=nil{
+
+		httpClient.RespondError(w, http.StatusBadRequest, "Some Error", err)
+		return
+	}
+	var papers []PaperDetails
+	if err =cursor.All(ctx,&papers);err!=nil{
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+		return
+	}
+    // fmt.Println(questions)
+	 
+	httpClient.RespondSuccess(w, papers)
+
+
+
+}
+

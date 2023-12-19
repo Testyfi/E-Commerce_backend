@@ -74,6 +74,9 @@ func main() {
 		r.Get("/", handlers.GetAdmins)
 		r.Get("/users", handlers.GetUsers)
 		r.Post("/create", handlers.CreateAdmin)
+		r.Post("/testinfo", handlers.GetAllTestDetails)
+		r.Post("/createtest", handlers.CreateTest)
+		r.Post("/deletetestinfo", handlers.DeleteTestInfo)
 		r.Get("/verify", handlers.VerifyAdminToken)
 	})
 
@@ -84,7 +87,9 @@ func main() {
 	r.Route("/rankbooster", func(r chi.Router) {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/pasttest", handlers.GetPastTest)
-		r.Post("/livetest", handlers.GetLiveTest)
+		r.Post("/livetest", handlers.GetLiveTestQuestion)
+		r.Post("/livetest/delete/userdata", handlers.DeleteLiveTestAllUserData)
+		r.Post("/livetest/response", handlers.LiveTestResponse)
 	})
 	
 
