@@ -455,7 +455,7 @@ func LiveTestTimeValidation(name string) bool{
 	s:=TestTime(name)
 	//fmt.Println(s)
 	start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
-	currenttime := time.Now()
+	currenttime := time.Now().Local()
 	end := time.Date(StringtoInt(s[0])+3, time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
 	if(currenttime.Compare(start)>=0 && currenttime.Compare(end)<=0){
 		
