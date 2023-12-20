@@ -163,6 +163,49 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 		
 
 }
+func UserRank(w http.ResponseWriter, r *http.Request){
+	user, ok := r.Context().Value(models.ContextUser).(models.User)
+
+	if !ok {
+		httpClient.RespondError(w, http.StatusBadRequest, "Failed to retrieve user", fmt.Errorf("failed to retrieve user"))
+		return
+	}
+	var t struct {
+		
+		TestName string `json:"testname"`
+		}
+	
+
+		err := json.NewDecoder(r.Body).Decode(&t)
+	
+		if err != nil {
+			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid testname", err)
+			return
+		}
+		httpClient.RespondSuccess(w,LiveTestRank(t.TestName,user))
+
+}
+func TotalUsers(w http.ResponseWriter, r *http.Request){
+
+	var t struct {
+		
+		TestName string `json:"testname"`
+		}
+	
+
+		err := json.NewDecoder(r.Body).Decode(&t)
+		filter := bson.M{"testindex":-1,"testname":t.TestName}
+			 
+
+	// Get the size of the collection with the specified filter
+	counter ,err:= testpaperCollection.CountDocuments(context.Background(), filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+			 
+			// res.TotalUser=counter
+				httpClient.RespondSuccess(w,counter)
+}
 func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 
 	

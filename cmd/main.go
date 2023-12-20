@@ -77,6 +77,7 @@ func main() {
 		r.Post("/testinfo", handlers.GetAllTestDetails)
 		r.Post("/createtest", handlers.CreateTest)
 		r.Post("/deletetestinfo", handlers.DeleteTestInfo)
+		r.Post("/livetest/delete/userdata", handlers.DeleteLiveTestAllUserData)
 		r.Get("/verify", handlers.VerifyAdminToken)
 	})
 
@@ -88,8 +89,10 @@ func main() {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/pasttest", handlers.GetPastTest)
 		r.Post("/livetest", handlers.GetLiveTestQuestion)
-		r.Post("/livetest/delete/userdata", handlers.DeleteLiveTestAllUserData)
+		
 		r.Post("/livetest/response", handlers.LiveTestResponse)
+		r.Post("/livetest/rank", handlers.UserRank)
+		r.Post("/livetest/totaluser", handlers.TotalUsers)
 	})
 	
 
