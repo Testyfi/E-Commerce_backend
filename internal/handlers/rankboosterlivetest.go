@@ -88,7 +88,15 @@ if err =cursor.All(ctx,&questions);err!=nil{
 		httpClient.RespondSuccess(w, questions[index])
 		return
 	}
-	httpClient.RespondSuccess(w, time.Now().Local())
+	indianTimeZone, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading Indian time zone:", err)
+		return
+	}
+
+	// Get the current time in the Indian time zone
+	indianTime := time.Now().In(indianTimeZone)
+	httpClient.RespondSuccess(w, indianTime)
 	return 
    //fmt.Println("At End")
 }
@@ -455,7 +463,15 @@ func LiveTestTimeValidation(name string) bool{
 	s:=TestTime(name)
 	//fmt.Println(s)
 	start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
-	currenttime := time.Now().Local()
+	indianTimeZone, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading Indian time zone:", err)
+		
+	}
+
+	// Get the current time in the Indian time zone
+	indianTime := time.Now().In(indianTimeZone)
+	currenttime :=indianTime
 	end := time.Date(StringtoInt(s[0])+3, time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
 	if(currenttime.Compare(start)>=0 && currenttime.Compare(end)<=0){
 		
