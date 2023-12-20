@@ -35,8 +35,8 @@ func GetLiveTestQuestion(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(LiveTestTimeValidation(t.Testname))
 	if(LiveTestTimeValidation(t.Testname)){
         
-		//var index=LiveTestFindPaperIndex(t.Testname);
-        var index=10
+		var index=LiveTestFindPaperIndex(t.Testname);
+        //var index=10
 		ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
 		cursor,err:=questionCollection.Find(ctx,bson.M{"subject_tags":t.Testname})
 		defer cursor.Close(ctx)
@@ -463,7 +463,7 @@ func LiveTestTimeValidation(name string) bool{
 	
 }
 func TestTime(testname string) []string{
-
+/*
 	type PaperDetails struct {
 		Name       string `json:"Name"`
 		Start      string `json:"Start"`
@@ -473,7 +473,7 @@ func TestTime(testname string) []string{
 		Duration   string `json:"Duration"`
 		Prize      string `json:"Prize"`
 	}
-	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
+	var ctx,_=context.WithTimeout(context.Background(),10*time.Second)
 	cursor,err:=testdetailsCollection.Find(ctx,bson.M{"name":testname})
 	defer cursor.Close(ctx)
 	if err !=nil{
@@ -487,7 +487,8 @@ func TestTime(testname string) []string{
      //fmt.Println(papers[])
 	 return strings.Split(papers[0].Start, "/")
 	
-
+*/
+return strings.Split("2023/12/20/14/00/00","/")
 }
 func StringtoInt(s string)int {
 
