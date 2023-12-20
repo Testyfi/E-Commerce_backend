@@ -459,20 +459,20 @@ return false
 
 }
 func LiveTestTimeValidation(name string) bool{
-	
-	s:=TestTime(name)
-	//fmt.Println(s)
-	start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
 	indianTimeZone, err := time.LoadLocation("Asia/Kolkata")
 	if err != nil {
 		fmt.Println("Error loading Indian time zone:", err)
 		
 	}
+	s:=TestTime(name)
+	//fmt.Println(s)
+	start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
+	
 
 	// Get the current time in the Indian time zone
 	indianTime := time.Now().In(indianTimeZone)
 	currenttime :=indianTime
-	end := time.Date(StringtoInt(s[0])+3, time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
+	end := time.Date(StringtoInt(s[0])+3, time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
 	if(currenttime.Compare(start)>=0 && currenttime.Compare(end)<=0){
 		
 		return true}
@@ -503,6 +503,7 @@ func TestTime(testname string) []string{
 	if err =cursor.All(ctx,&papers);err!=nil{
 		fmt.Println(err)
 	}
+
      //fmt.Println(papers[])
 	 return strings.Split(papers[0].Start, "/")
 	
