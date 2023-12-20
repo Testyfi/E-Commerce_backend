@@ -88,7 +88,7 @@ if err =cursor.All(ctx,&questions);err!=nil{
 		httpClient.RespondSuccess(w, questions[index])
 		return
 	}
-	httpClient.RespondSuccess(w, time.Now())
+	httpClient.RespondSuccess(w, time.Now().Local())
 	return 
    //fmt.Println("At End")
 }
