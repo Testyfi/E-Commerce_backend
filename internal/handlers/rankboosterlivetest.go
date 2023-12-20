@@ -18,21 +18,25 @@ import (
 )
 
 func GetLiveTestQuestion(w http.ResponseWriter, r *http.Request) {
-
+	//httpClient.RespondSuccess(w, "success")
+	//fmt.Println("success")
 	var t struct {
 	Testname string `json:"testname"`
 	}
-
+    
 	err := json.NewDecoder(r.Body).Decode(&t)
-
+    //fmt.Println(t.Testname)
 	if err != nil {
+		fmt.Println("error "+err.Error())
 		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid testname", err)
 		return
 	}
+	//
+	//fmt.Println(LiveTestTimeValidation(t.Testname))
 	if(LiveTestTimeValidation(t.Testname)){
-
+        
 		var index=LiveTestFindPaperIndex(t.Testname);
-
+        //var index=10
 		ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
 		cursor,err:=questionCollection.Find(ctx,bson.M{"subject_tags":t.Testname})
 		defer cursor.Close(ctx)
@@ -76,14 +80,14 @@ if err =cursor.All(ctx,&questions);err!=nil{
 			return
 		}
 	*/	
-		 fmt.Println(index)
+		 //fmt.Println(index)
 		questions[index].Correctanswer="";
 		var str[]string
 		questions[index].Correctanswers=str
 	
 		httpClient.RespondSuccess(w, questions[index])
 	}
-    
+   //fmt.Println("At End")
 }
 func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 
@@ -401,13 +405,19 @@ return false
 
 }
 func LiveTestTimeValidation(name string) bool{
+	
 	s:=TestTime(name)
+	//fmt.Println(s)
 	start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
 	currenttime := time.Now()
 	end := time.Date(StringtoInt(s[0])+3, time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
-	if(currenttime.Compare(start)>=0&& currenttime.Compare(end)<=0){
+	if(currenttime.Compare(start)>=0 && currenttime.Compare(end)<=0){
+		
 		return true}
+		
 	return false;
+	
+	
 }
 func TestTime(testname string) []string{
 
@@ -427,12 +437,12 @@ func TestTime(testname string) []string{
 
 		fmt.Println(err)
 	}
-	var papers PaperDetails
+	var papers []PaperDetails
 	if err =cursor.All(ctx,&papers);err!=nil{
 		fmt.Println(err)
 	}
-    // fmt.Println(questions)
-	 return strings.Split(papers.Start, "/")
+     //fmt.Println(papers[])
+	 return strings.Split(papers[0].Start, "/")
 	
 
 }
