@@ -33,10 +33,10 @@ func GetLiveTestQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 	//
 	//fmt.Println(LiveTestTimeValidation(t.Testname))
-	if(LiveTestTimeValidation(t.Testname)){
+	if(true){
         
-		var index=LiveTestFindPaperIndex(t.Testname);
-        //var index=10
+		//var index=LiveTestFindPaperIndex(t.Testname);
+        var index=10
 		ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
 		cursor,err:=questionCollection.Find(ctx,bson.M{"subject_tags":t.Testname})
 		defer cursor.Close(ctx)
