@@ -464,13 +464,14 @@ func LiveTestTimeValidation(name string) bool{
 		fmt.Println("Error loading Indian time zone:", err)
 		
 	}
+	indianTime := time.Now().In(indianTimeZone)
 	s:=TestTime(name)
 	//fmt.Println(s)
 	start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
 	
 
 	// Get the current time in the Indian time zone
-	indianTime := time.Now().In(indianTimeZone)
+	
 	currenttime :=indianTime
 	end := time.Date(StringtoInt(s[0])+3, time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
 	if(currenttime.Compare(start)>=0 && currenttime.Compare(end)<=0){
@@ -516,9 +517,15 @@ func StringtoInt(s string)int {
 	return i;
 }
 func LiveTestFindPaperIndex(name string) int{
+	indianTimeZone, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		fmt.Println("Error loading Indian time zone:", err)
+		
+	}
+	indianTime := time.Now().In(indianTimeZone)
     s:=TestTime(name)
-	d := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,time.Local)
-	currenttime := time.Now()
+	d := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
+	currenttime := indianTime
 	timegoes:=currenttime.Sub(d)
 	
     maxquestions:=TotalQuestion(name)
