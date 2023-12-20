@@ -86,7 +86,10 @@ if err =cursor.All(ctx,&questions);err!=nil{
 		questions[index].Correctanswers=str
 	
 		httpClient.RespondSuccess(w, questions[index])
+		return
 	}
+	httpClient.RespondSuccess(w, "someerror")
+	return 
    //fmt.Println("At End")
 }
 func LiveTestResponse(w http.ResponseWriter, r *http.Request){
@@ -463,7 +466,7 @@ func LiveTestTimeValidation(name string) bool{
 	
 }
 func TestTime(testname string) []string{
-/*
+
 	type PaperDetails struct {
 		Name       string `json:"Name"`
 		Start      string `json:"Start"`
@@ -487,8 +490,8 @@ func TestTime(testname string) []string{
      //fmt.Println(papers[])
 	 return strings.Split(papers[0].Start, "/")
 	
-*/
-return strings.Split("2023/12/20/14/00/00","/")
+
+//return strings.Split("2023/12/20/14/00/00","/")
 }
 func StringtoInt(s string)int {
 
