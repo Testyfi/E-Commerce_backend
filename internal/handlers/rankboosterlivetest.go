@@ -317,7 +317,8 @@ func FindNumberOFUserGreaterThen(testname string ,number int)int{
 	
 	cursor,err:=testpaperCollection.Find(ctx,bson.M{
 		"testname": testname,
-		"number":   bson.M{"$gt": number},
+		"testindex":-1,
+		"totalnumber":   bson.M{"$gt": number},
 	})
 	defer cursor.Close(ctx)
 	if err !=nil{
