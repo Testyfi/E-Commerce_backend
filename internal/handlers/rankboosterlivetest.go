@@ -138,6 +138,7 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 			
 			userresponce.TestName=t.TestName
 			userresponce.Value=MatchAnswer(t.TestAnswer,ReturnAnswer(t.TestName,index))
+			fmt.Println(GetNumberFromResponse(index,t.TestAnswer,t.TestName))
 			testpaperCollection.InsertOne(context.TODO(), userresponce)
 			
 			
@@ -146,8 +147,28 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 			opts := options.Update().SetUpsert(true)
 
 	// Update the document with the specified filter and update
-	         testpaperCollection.UpdateOne(context.Background(), filter, update, opts)
+	testpaperCollection.UpdateOne(context.Background(), filter, update, opts)
 	        
+	//filter := bson.D{{"username", "john_doe"}}
+
+	// Find documents that match the filter
+	cursor, err := testpaperCollection.Find(context.Background(), filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cursor.Close(context.Background())
+    type us struct{
+		User models.User 
+		Testindex int `json:"testindex"`
+		Testname string `json:"testname"`
+		TotalNumber int `json:"totalnumber"`
+	}
+	// Iterate over the cursor to process the results
+	var users []us
+	if err := cursor.All(context.Background(), &users); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(users)
 			 var res struct {
 
 				TotalUser int64 `json:"allstudent"`
@@ -230,7 +251,8 @@ func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 		log.Fatal(err)
 		
 	}
-	fmt.Println(result)
+	httpClient.RespondSuccess(w,result)
+	
 }
 func DeleteTestInfo(w http.ResponseWriter, r *http.Request){
 
@@ -260,11 +282,12 @@ func DeleteTestInfo(w http.ResponseWriter, r *http.Request){
 func LiveTestRank(testname string, User models.User)int{
 
 	 number:=FindUserTotalNumber(testname,User)
+	 //fmt.Println(number)
 return FindNumberOFUserGreaterThen(testname,number)+1
 }
 func FindUserTotalNumber(testname string, User models.User)int {
 	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
-	cursor,err:=testpaperCollection.Find(ctx,bson.M{"testname":testname,"user":User})
+	cursor,err:=testpaperCollection.Find(ctx,bson.M{"testname":testname,"user":User,"testindex":-1})
 	defer cursor.Close(ctx)
 	if err !=nil{
 
@@ -400,7 +423,7 @@ if err =cursor.All(ctx,&questions);err!=nil{
 		}
     qtype:=GetType(questions[index].Type)
     if(qtype==0){return GetNumberSingleCorrect(resanswer,questions[index].Correctanswer)}
-	if(qtype==1){return GetNumberNumericalCorrect(resanswer,ArrayStringToString(questions[index].Correctanswers))}
+	if(qtype==1){return GetNumberMultipleCorrect(resanswer,ArrayStringToString(questions[index].Correctanswers))}
 	return GetNumberNumericalCorrect(resanswer,questions[index].Correctanswer)
 
 }
@@ -421,9 +444,11 @@ func GetNumberNumericalCorrect(answer string, correctanswer string)int {
 	return 0
 }
 func GetNumberMultipleCorrect(answer string, correctanswer string)int {
-
+  
+   
 	if(len(answer)==0){return 0}
 	ans:=strings.Split(answer, ",")
+	
 	corans:=strings.Split(correctanswer,",")
 	for i:=0;i<len(ans);i++{
 
