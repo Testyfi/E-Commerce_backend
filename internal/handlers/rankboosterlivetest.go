@@ -235,7 +235,7 @@ func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 
 	
 	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
-	cursor,err:=testpaperCollection.Find(ctx,bson.M{})
+	cursor,err:=usermaxscoreCollection.Find(ctx,bson.M{})
 	defer cursor.Close(ctx)
 	if err !=nil{
 
@@ -252,8 +252,8 @@ func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 		
 
 }
-	var questions []UserMaxScore
-if err =cursor.All(ctx,&questions);err!=nil{
+	var usermaxdata []UserMaxScore
+if err =cursor.All(ctx,&usermaxdata);err!=nil{
 			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
 			return
 		}
@@ -262,13 +262,14 @@ if err =cursor.All(ctx,&questions);err!=nil{
 
 	// Delete all documents in the collection
 
-	result, err := testpaperCollection.DeleteMany(context.Background(), filter)
+	result, err := usermaxscoreCollection.DeleteMany(context.Background(), filter)
 	if err != nil {
 		log.Fatal(err)
 		
 	}
+	testpaperCollection.DeleteMany(context.Background(),filter)
 	fmt.Println(result)
-	httpClient.RespondSuccess(w,questions)
+	httpClient.RespondSuccess(w,usermaxdata)
 	
 }
 func DeleteTestInfo(w http.ResponseWriter, r *http.Request){
