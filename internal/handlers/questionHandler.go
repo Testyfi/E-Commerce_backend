@@ -27,6 +27,7 @@ var questionCollection *mongo.Collection = database.OpenCollection(database.Clie
 var testpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "testpaper")
 var usermaxscoreCollection *mongo.Collection = database.OpenCollection(database.Client, "usermaxscore")
 var testdetailsCollection *mongo.Collection = database.OpenCollection(database.Client, "testdetails")
+var totaluserCollection *mongo.Collection = database.OpenCollection(database.Client, "totaluser")
 var qpaperCollection *mongo.Collection = database.OpenCollection(database.Client, "qpaper")
 var questionsAWS_S3_API string = "https://testify-jee.s3.ap-south-1.amazonaws.com/assets/questions"
 

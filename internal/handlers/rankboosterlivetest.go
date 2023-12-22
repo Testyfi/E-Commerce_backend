@@ -221,17 +221,51 @@ func TotalUsers(w http.ResponseWriter, r *http.Request){
 	
 
 		err := json.NewDecoder(r.Body).Decode(&t)
-		filter := bson.M{"testindex":-1,"testname":t.TestName}
-			 
+		ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
+	cursor,err:=totaluserCollection.Find(ctx,bson.M{"testname":t.TestName})
+	defer cursor.Close(ctx)
+	if err !=nil{
 
-	// Get the size of the collection with the specified filter
-	counter ,err:= usermaxscoreCollection.CountDocuments(context.Background(), filter)
-	if err != nil {
-		log.Fatal(err)
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+		return
 	}
-			 
-			// res.TotalUser=counter
-				httpClient.RespondSuccess(w,counter)
+	type UserMaxScore struct {
+	
+	
+		
+		TestName string `json:"testname"`
+		
+		TotalUser int `json:"totaluser"`
+		
+
+}
+	var usermaxdata []UserMaxScore
+if err =cursor.All(ctx,&usermaxdata);err!=nil{
+			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+			return
+		}
+		httpClient.RespondSuccess(w,usermaxdata[0].TotalUser)
+
+	
+}
+func IncrementUser(w http.ResponseWriter, r *http.Request){
+
+	var t struct {
+		
+		TestName string `json:"testname"`
+		}
+	
+        
+		err := json.NewDecoder(r.Body).Decode(&t)
+		if err!=nil {fmt.Println(err)}
+		    filter := bson.M{"testname": t.TestName}
+			update := bson.M{"$inc": bson.M{"totaluser": 1}}
+			opts := options.Update().SetUpsert(true)
+
+	// Update the document with the specified filter and update
+	totaluserCollection.UpdateOne(context.Background(), filter, update, opts)
+	
+	httpClient.RespondSuccess(w,"success")
 }
 func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 
@@ -247,7 +281,7 @@ func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 	type UserMaxScore struct {
 	
 	
-		UserData models.User `json:"user"`
+		UserPhone string `json:"userphone"`
 		TestName string `json:"testname"`
 		TestIndex int `json:"testindex"`
 		TotalNumber int `json:"totalnumber"`
@@ -264,13 +298,11 @@ if err =cursor.All(ctx,&usermaxdata);err!=nil{
 
 	// Delete all documents in the collection
 
-	result, err := usermaxscoreCollection.DeleteMany(context.Background(), filter)
-	if err != nil {
-		log.Fatal(err)
-		
-	}
+   usermaxscoreCollection.DeleteMany(context.Background(), filter)
+	
 	testpaperCollection.DeleteMany(context.Background(),filter)
-	fmt.Println(result)
+	totaluserCollection.DeleteMany(context.Background(), filter)
+	//fmt.Println(result)
 	httpClient.RespondSuccess(w,usermaxdata)
 	
 }
@@ -314,6 +346,7 @@ func FindUserTotalNumber(testname string, User models.User)int {
 		fmt.Println(err)
 		
 	}
+	
 	type UserMaxScore struct {
 	
 	
@@ -324,11 +357,12 @@ func FindUserTotalNumber(testname string, User models.User)int {
 				
 	
 }
-	var user UserMaxScore
+	var user []UserMaxScore
 if err =cursor.All(ctx,&user);err!=nil{
 			fmt.Println(err)
 		}
-	return user.TotalNumber
+		fmt.Println(user[0].TotalNumber)
+	return user[0].TotalNumber
 
 }
 

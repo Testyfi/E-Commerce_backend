@@ -93,6 +93,7 @@ func main() {
 		r.Post("/livetest/response", handlers.LiveTestResponse)
 		r.Post("/livetest/rank", handlers.UserRank)
 		r.Post("/livetest/totaluser", handlers.TotalUsers)
+		r.Post("/livetest/incrementuser", handlers.IncrementUser)
 	})
 	
 
