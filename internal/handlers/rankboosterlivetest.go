@@ -202,7 +202,14 @@ func UserRank(w http.ResponseWriter, r *http.Request){
 			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid testname", err)
 			return
 		}
-		httpClient.RespondSuccess(w,LiveTestRank(t.TestName,user))
+		var res struct {
+
+			TestRank int `json:"testrank"`
+			TestMarks int `json:"testmarks"`
+		}
+		res.TestRank=LiveTestRank(t.TestName,user)
+		res.TestMarks=FindUserTotalNumber(t.TestName,user)
+		httpClient.RespondSuccess(w,res)
 
 }
 func TotalUsers(w http.ResponseWriter, r *http.Request){
@@ -324,6 +331,7 @@ if err =cursor.All(ctx,&user);err!=nil{
 	return user.TotalNumber
 
 }
+
 func FindNumberOFUserGreaterThen(testname string ,number int)int{
 
 	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
