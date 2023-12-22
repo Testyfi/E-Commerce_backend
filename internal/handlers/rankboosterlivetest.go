@@ -142,7 +142,7 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 			testpaperCollection.InsertOne(context.TODO(), userresponce)
 			
 			
-			filter := bson.M{"user": user,"testindex":-1,"testname":t.TestName}
+			filter := bson.M{"userphone": user.Phone,"testindex":-1,"testname":t.TestName}
 			update := bson.M{"$inc": bson.M{"totalnumber": GetNumberFromResponse(index,t.TestAnswer,t.TestName)}}
 			opts := options.Update().SetUpsert(true)
 
@@ -153,12 +153,7 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 
 	// Find documents that match the filter
 	
-    type usermax struct{
-		User models.User `json:"user"`
-		Testindex int `json:"testindex"`
-		Testname string `json:"testname"`
-		TotalNumber int `json:"totalnumber"`
-	}
+   
 	// Iterate over the cursor to process the results
 	
 	
@@ -305,7 +300,7 @@ return FindNumberOFUserGreaterThen(testname,number)+1
 }
 func FindUserTotalNumber(testname string, User models.User)int {
 	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
-	cursor,err:=usermaxscoreCollection.Find(ctx,bson.M{"testname":testname,"user":User,"testindex":-1})
+	cursor,err:=usermaxscoreCollection.Find(ctx,bson.M{"testname":testname,"userphone":User.Phone,"testindex":-1})
 	defer cursor.Close(ctx)
 	if err !=nil{
 
@@ -315,7 +310,7 @@ func FindUserTotalNumber(testname string, User models.User)int {
 	type UserMaxScore struct {
 	
 	
-		        UserData models.User `json:"user"`
+		        UserPhone string `json:"userphone"`
 				TestName string `json:"testname"`
 				TestIndex int `json:"testindex"`
 				TotalNumber int `json:"totalnumber"`
