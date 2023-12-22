@@ -147,28 +147,21 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 			opts := options.Update().SetUpsert(true)
 
 	// Update the document with the specified filter and update
-	testpaperCollection.UpdateOne(context.Background(), filter, update, opts)
+	usermaxscoreCollection.UpdateOne(context.Background(), filter, update, opts)
 	        
 	//filter := bson.D{{"username", "john_doe"}}
 
 	// Find documents that match the filter
-	cursor, err := testpaperCollection.Find(context.Background(), filter)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cursor.Close(context.Background())
-    type us struct{
-		User models.User 
+	
+    type usermax struct{
+		User models.User `json:"user"`
 		Testindex int `json:"testindex"`
 		Testname string `json:"testname"`
 		TotalNumber int `json:"totalnumber"`
 	}
 	// Iterate over the cursor to process the results
-	var users []us
-	if err := cursor.All(context.Background(), &users); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(users)
+	
+	
 			 var res struct {
 
 				TotalUser int64 `json:"allstudent"`
@@ -179,7 +172,7 @@ func LiveTestResponse(w http.ResponseWriter, r *http.Request){
 			 
 
 	// Get the size of the collection with the specified filter
-	counter ,err:= testpaperCollection.CountDocuments(context.Background(), filter)
+	counter ,err:= usermaxscoreCollection.CountDocuments(context.Background(), filter)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -241,17 +234,41 @@ func TotalUsers(w http.ResponseWriter, r *http.Request){
 func DeleteLiveTestAllUserData(w http.ResponseWriter, r *http.Request){
 
 	
+	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
+	cursor,err:=testpaperCollection.Find(ctx,bson.M{})
+	defer cursor.Close(ctx)
+	if err !=nil{
 
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+		return
+	}
+	type UserMaxScore struct {
+	
+	
+		UserData models.User `json:"user"`
+		TestName string `json:"testname"`
+		TestIndex int `json:"testindex"`
+		TotalNumber int `json:"totalnumber"`
+		
+
+}
+	var questions []UserMaxScore
+if err =cursor.All(ctx,&questions);err!=nil{
+			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+			return
+		}
 	// Create an empty filter to match all documents
 	filter := bson.D{{}}
 
 	// Delete all documents in the collection
+
 	result, err := testpaperCollection.DeleteMany(context.Background(), filter)
 	if err != nil {
 		log.Fatal(err)
 		
 	}
-	httpClient.RespondSuccess(w,result)
+	fmt.Println(result)
+	httpClient.RespondSuccess(w,questions)
 	
 }
 func DeleteTestInfo(w http.ResponseWriter, r *http.Request){
@@ -287,7 +304,7 @@ return FindNumberOFUserGreaterThen(testname,number)+1
 }
 func FindUserTotalNumber(testname string, User models.User)int {
 	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
-	cursor,err:=testpaperCollection.Find(ctx,bson.M{"testname":testname,"user":User,"testindex":-1})
+	cursor,err:=usermaxscoreCollection.Find(ctx,bson.M{"testname":testname,"user":User,"testindex":-1})
 	defer cursor.Close(ctx)
 	if err !=nil{
 
@@ -315,7 +332,7 @@ func FindNumberOFUserGreaterThen(testname string ,number int)int{
 
 	ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
 	
-	cursor,err:=testpaperCollection.Find(ctx,bson.M{
+	cursor,err:=usermaxscoreCollection.Find(ctx,bson.M{
 		"testname": testname,
 		"testindex":-1,
 		"totalnumber":   bson.M{"$gt": number},
