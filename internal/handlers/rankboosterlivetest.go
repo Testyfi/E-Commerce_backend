@@ -223,7 +223,7 @@ func TotalUsers(w http.ResponseWriter, r *http.Request){
 			 
 
 	// Get the size of the collection with the specified filter
-	counter ,err:= testpaperCollection.CountDocuments(context.Background(), filter)
+	counter ,err:= usermaxscoreCollection.CountDocuments(context.Background(), filter)
 	if err != nil {
 		log.Fatal(err)
 	}
