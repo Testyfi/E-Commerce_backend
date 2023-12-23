@@ -13,6 +13,7 @@ import (
 	database "testify/database"
 	models "testify/internal/models"
 	utility "testify/internal/utility"
+	httpClient "testify/internal/utility/http"
 
 	"github.com/go-chi/chi"
 	"github.com/go-playground/validator"
@@ -604,25 +605,28 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-
+    
 	err := userCollection.FindOne(context.Background(), bson.M{"email": helper.Email}).Decode(&user)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
+	//fmt.Println(user)
 
 	user.ResetCode = utility.GenerateRandomCode()
 	result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": user.User_id}, bson.M{"$set": bson.M{
 		"resetcode": user.ResetCode,
 	}})
 	if err != nil {
+		//fmt.Println("some error")
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Println(err)
 		fmt.Fprintf(w, "Error Resetting Password. Please try again later")
 		return
 	}
-	println(result)
+	fmt.Println(result)
+	
 	resetLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/reset" + "?user_id=" + user.User_id + "&secret=" + user.ResetCode)
 	err = utility.SendMail("click on this link to reset your password. "+resetLink+" Your new Password will be "+user.ResetCode+". If this was not requested by you, kindly ignore.", helper.Email, "Testify Password Reset Link")
 	if err != nil {
@@ -631,5 +635,7 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Internal Server Error. Please try again later")
 		return
 	}
-	w.Write([]byte("Password Reset Link has been sent to your email."))
+	fmt.Println("Working")
+	httpClient.RespondSuccess(w, "Password Reset Link has been sent to your email.")
+	//w.Write([]byte("Password Reset Link has been sent to your email."))
 }
