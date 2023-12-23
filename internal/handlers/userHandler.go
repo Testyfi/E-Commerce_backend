@@ -635,7 +635,7 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Internal Server Error. Please try again later")
 		return
 	}
-	fmt.Println("Working")
-	httpClient.RespondSuccess(w, "Password Reset Link has been sent to your email.")
+	//fmt.Println("Working")
+	httpClient.RespondSuccess(w, "Password Reset Link has been sent to your email.Please also check Your Spam Box")
 	//w.Write([]byte("Password Reset Link has been sent to your email."))
 }
