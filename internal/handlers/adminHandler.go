@@ -212,13 +212,13 @@ func CreateTest(w http.ResponseWriter, r *http.Request){
 		
 		s:=TestTime(Insert.Start)
 		//fmt.Println(s)
-		start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
-		Insert.StartDate=start
+		Insert.StartDate= time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
+		
 	testdetailsCollection.InsertOne(context.TODO(),Insert)
 	httpClient.RespondSuccess(w,"Success")
 }
 func GetAllTestDetails(w http.ResponseWriter, r *http.Request){
-
+	//indianTimeZone, err := time.LoadLocation("Asia/Kolkata")
 	type PaperDetails struct {
 		Name       string `json:"Name"`
 		Start      string `json:"Start"`
@@ -242,7 +242,7 @@ func GetAllTestDetails(w http.ResponseWriter, r *http.Request){
 		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
 		return
 	}
-    // fmt.Println(questions)
+    
 	 
 	httpClient.RespondSuccess(w, papers)
 
