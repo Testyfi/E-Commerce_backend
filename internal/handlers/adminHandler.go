@@ -223,6 +223,7 @@ func GetAllTestDetails(w http.ResponseWriter, r *http.Request){
 		Name       string `json:"Name"`
 		Start      string `json:"Start"`
 		StartAt    string `json:"StartAt"`
+		StartDate  time.Time `json:"StartDate"`
 		Difficulty string `json:"Difficulty"`
 		Topics     string `json:"Topics"`
 		Duration   string `json:"Duration"`
