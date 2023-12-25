@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	database "testify/database"
 	models "testify/internal/models"
 	utility "testify/internal/utility"
@@ -210,10 +211,10 @@ func CreateTest(w http.ResponseWriter, r *http.Request){
 			
 		}
 		
-		s:=TestTime(Insert.Start)
+		s:=strings.Split(Insert.Start, "/")
 		//fmt.Println(s)
 		Insert.StartDate= time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
-		
+		fmt.Println(Insert.StartDate)
 	testdetailsCollection.InsertOne(context.TODO(),Insert)
 	httpClient.RespondSuccess(w,"Success")
 }
@@ -243,7 +244,7 @@ func GetAllTestDetails(w http.ResponseWriter, r *http.Request){
 		return
 	}
     
-	 
+	 fmt.Println(papers)
 	httpClient.RespondSuccess(w, papers)
 
 
