@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	database "testify/database"
@@ -178,15 +179,42 @@ func CreateTest(w http.ResponseWriter, r *http.Request){
 		Duration   string `json:"Duration"`
 		Prize      string `json:"Prize"`
 	}
+	var Insert struct {
+		Name       string `json:"Name"`
+		Start      string `json:"Start"`
+		StartAt    string `json:"StartAt"`
+		StartDate  time.Time `json:"StartDate"`
+		Difficulty string `json:"Difficulty"`
+		Topics     string `json:"Topics"`
+		Duration   string `json:"Duration"`
+		Prize      string `json:"Prize"`
+	}
 	
 	
 		err := json.NewDecoder(r.Body).Decode(&PaperDetails)
-	
+	  
 		if err != nil {
 			httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid testname", err)
 			return
 		}
-	testdetailsCollection.InsertOne(context.TODO(),PaperDetails)
+		Insert.Name=PaperDetails.Name
+		Insert.Start=PaperDetails.Start
+		Insert.StartAt=PaperDetails.StartAt
+		Insert.Difficulty=PaperDetails.Difficulty
+		Insert.Topics=PaperDetails.Topics
+		Insert.Duration=PaperDetails.Duration
+		Insert.Prize=PaperDetails.Prize
+		indianTimeZone, err := time.LoadLocation("Asia/Kolkata")
+		if err != nil {
+			fmt.Println("Error loading Indian time zone:", err)
+			
+		}
+		
+		s:=TestTime(Insert.Start)
+		//fmt.Println(s)
+		start := time.Date(StringtoInt(s[0]), time.Month(StringtoInt(s[1])), StringtoInt(s[2]), StringtoInt(s[3]), StringtoInt(s[4]), StringtoInt(s[5]), 0,indianTimeZone)
+		Insert.StartDate=start
+	testdetailsCollection.InsertOne(context.TODO(),Insert)
 	httpClient.RespondSuccess(w,"Success")
 }
 func GetAllTestDetails(w http.ResponseWriter, r *http.Request){

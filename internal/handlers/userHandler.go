@@ -636,6 +636,6 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//fmt.Println("Working")
-	httpClient.RespondSuccess(w, "Password Reset Link has been sent to your email.Please also check Your Spam Box")
+	httpClient.RespondSuccess(w, "Password Reset Link has been sent to your email.Please also check your spam box")
 	//w.Write([]byte("Password Reset Link has been sent to your email."))
 }

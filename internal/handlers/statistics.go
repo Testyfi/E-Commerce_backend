@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func TotalMarks(s string)int  {
+func TestMaxMarks(s string)int  {
 	if(s=="Jee Mains"){return 300}
     total:=0
 	filter := bson.D{{"subject_tags", s}}
@@ -25,3 +25,8 @@ func TotalMarks(s string)int  {
 	}
 	return total-int(count)
 }
+func UserMarks(testname string,phone string)int{
+
+	return 0
+}
+
