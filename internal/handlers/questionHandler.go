@@ -702,9 +702,16 @@ var Topics = []string{
 type CreateQPaperHelper struct {
 	Questions []int `json:"questions"`
 }
-func CreateYourTest(w http.ResponseWriter, r *http.Request){
+func CreateYourTestAdvanced(w http.ResponseWriter, r *http.Request){
 	//DistinctSubject_tags()
 	//UpdateQuestionCollection()
+	user, ok := r.Context().Value(models.ContextUser).(models.User)
+
+	if !ok {
+		httpClient.RespondError(w, http.StatusBadRequest, "Failed to retrieve user", fmt.Errorf("failed to retrieve user"))
+		fmt.Println("some error on user fething statics")
+		return 
+	}
 	var t struct {
 		
 		Topics []string `json:"topics"`
@@ -720,7 +727,7 @@ func CreateYourTest(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	//fmt.Println(Questions(t.Number,t.Topics))
-	httpClient.RespondSuccess(w, Questions(t.Number,t.Topics))
+	httpClient.RespondSuccess(w, Questions(t.Number,t.Topics,*user.Phone))
 	
 	
 	
@@ -748,16 +755,33 @@ func UpdateQuestionCollection(){
 	// Print the number of documents updated
 	fmt.Printf("Updated %v documents\n", result.ModifiedCount)
 }
-func Questions(num int,subject []string) []models.Question{
+func Questions(num int,subject []string,phone string) []models.Question{
 	
 
 	// Encode string array to BSON
 	
-	
+	jeemains:=[]string{"jee mains","JEE MAINS","Jee Mains","jee Mains","jee mains","Jee Main"}
 	
 	ctx := context.Background()
 	pipeline:=bson.A{
-		bson.D{{"$match", bson.D{{"usedby", bson.D{{"$ne", "9517415732"}}}}}},
+		bson.D{{"$match", bson.D{{"usedby", bson.D{{"$ne", phone}}}}}},
+		bson.D{
+        {"$match",
+            bson.D{
+                {"subject_tags",
+                    bson.D{
+                        {"$ne",
+                            bson.D{
+                                {"$in",
+                                    jeemains,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 		bson.D{
 			{"$match",
 				bson.D{
@@ -835,6 +859,91 @@ func Questions(num int,subject []string) []models.Question{
 			log.Fatal(err)
 		}
 return questions
+}
+func CreateYourTestJeeMains(w http.ResponseWriter, r *http.Request){
+
+	user, ok := r.Context().Value(models.ContextUser).(models.User)
+
+	if !ok {
+		httpClient.RespondError(w, http.StatusBadRequest, "Failed to retrieve user", fmt.Errorf("failed to retrieve user"))
+		fmt.Println("some error on user fething statics")
+		return 
+	}
+	var t struct {
+		
+		Topics []string `json:"topics"`
+		Number int `json:"number"`
+	}
+
+
+	err := json.NewDecoder(r.Body).Decode(&t)
+	//fmt.Println(t)
+
+	if err != nil {
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid test or user", err)
+		return
+	}
+	httpClient.RespondSuccess(w, JeeMainsQuestions(t.Topics,t.Number,*user.Phone))
+}
+func JeeMainsQuestions(topics []string,numberofquestion int,phone string)[]models.Question{
+	ctx := context.Background()
+	jeemains:=[]string{"Jee mains",
+	"jee mains",
+	"jee Mains",
+	"Jee Mains","JEE mains",
+	"Probability,jee mains"}
+	
+	pipeline:=bson.A{
+    bson.D{{"$match", bson.D{{"usedby", bson.D{{"$ne", phone}}}}}},
+	bson.D{
+        {"$match",
+            bson.D{
+                {"subject_tags",
+                    bson.D{
+                        {"$in",
+                            jeemains,
+                        },
+                    },
+                },
+            },
+        },
+    },
+    bson.D{
+        {"$match",
+            bson.D{
+                {"subject_tags",
+                    bson.D{
+                        {"$in",
+                            topics,
+                        },
+                    },
+                },
+            },
+        },
+    },
+    bson.D{{"$sample", bson.D{{"size", numberofquestion}}}},
+}
+cursor, err := questionCollection.Aggregate(context.Background(), pipeline)
+		if err != nil {
+			//http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+			//return
+		}
+		defer cursor.Close(ctx)
+		var questions []models.Question
+	for cursor.Next(ctx) {
+		var result models.Question
+		err := cursor.Decode(&result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		questions = append(questions, result)
+	}
+		// Check for errors from iterating over cursor
+		if err := cursor.Err(); err != nil {
+			log.Fatal(err)
+		}
+ return questions
+
 }
 func DistinctSubject_tags(){
 

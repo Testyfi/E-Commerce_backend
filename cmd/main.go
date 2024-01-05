@@ -103,7 +103,8 @@ func main() {
 	r.Route("/test", func(r chi.Router) {
 
 		r.Use(handlers.AuthenticationMiddleware)
-		r.Post("/createyourtest", handlers.CreateYourTest)
+		r.Post("/createyourtest", handlers.CreateYourTestAdvanced)
+		r.Post("/createyourtestjeemains", handlers.CreateYourTestJeeMains)
 	})
 	
 
