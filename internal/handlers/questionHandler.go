@@ -727,10 +727,39 @@ func CreateYourTestAdvanced(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	//fmt.Println(Questions(t.Number,t.Topics))
-	httpClient.RespondSuccess(w, Questions(t.Number,t.Topics,*user.Phone))
+	var questions []models.Question=Questions(t.Number,t.Topics,*user.Phone)
+	//questions=
+	httpClient.RespondSuccess(w, questions)
 	
+	for i:=0;i<len(questions);i++{
+
+		addusedby(*user.Phone,questions[i])
+	}
 	
+}
+func addusedby(phone string,question models.Question){
+question.UsedBy = append(question.UsedBy, phone)
+
+filter := bson.D{{"q_id", question.Q_id}}
+
+	// Specify the update to be applied
 	
+	update := bson.D{
+		{"$set", bson.D{
+			{"usedby",question.UsedBy},
+			// add more fields to update as needed
+		}},
+	}
+
+	// Perform the updateMany operation
+	result, err := questionCollection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		fmt.Println("Error updating documents:", err)
+		return
+	}
+
+	// Print the number of documents updated
+	fmt.Printf("Updated %v documents\n", result.ModifiedCount)
 }
 func UpdateQuestionCollection(){
      //valueTobeupdated:=[]string{"permutation and combination"}
@@ -883,7 +912,12 @@ func CreateYourTestJeeMains(w http.ResponseWriter, r *http.Request){
 		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid test or user", err)
 		return
 	}
-	httpClient.RespondSuccess(w, JeeMainsQuestions(t.Topics,t.Number,*user.Phone))
+	var questions []models.Question=JeeMainsQuestions(t.Topics,t.Number,*user.Phone)
+	httpClient.RespondSuccess(w, questions)
+	for i:=0;i<len(questions);i++{
+
+		addusedby(*user.Phone,questions[i])
+	}
 }
 func JeeMainsQuestions(topics []string,numberofquestion int,phone string)[]models.Question{
 	ctx := context.Background()
