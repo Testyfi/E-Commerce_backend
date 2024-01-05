@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	database "testify/database"
 	models "testify/internal/models"
 	utility "testify/internal/utility"
+	httpClient "testify/internal/utility/http"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -699,6 +701,186 @@ var Topics = []string{
 
 type CreateQPaperHelper struct {
 	Questions []int `json:"questions"`
+}
+func CreateYourTest(w http.ResponseWriter, r *http.Request){
+	//DistinctSubject_tags()
+	//UpdateQuestionCollection()
+	var t struct {
+		
+		Topics []string `json:"topics"`
+		Number int `json:"number"`
+	}
+
+
+	err := json.NewDecoder(r.Body).Decode(&t)
+	//fmt.Println(t)
+
+	if err != nil {
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid test or user", err)
+		return
+	}
+	//fmt.Println(Questions(t.Number,t.Topics))
+	httpClient.RespondSuccess(w, Questions(t.Number,t.Topics))
+	
+	
+	
+}
+func UpdateQuestionCollection(){
+     //valueTobeupdated:=[]string{"permutation and combination"}
+	filter := bson.D{{"subject_tags", "permutation and combination"}}
+
+	// Specify the update to be applied
+	valuesToSearch := []string{"Permutation & Combination","Mathematics"}
+	update := bson.D{
+		{"$set", bson.D{
+			{"subject_tags", valuesToSearch},
+			// add more fields to update as needed
+		}},
+	}
+
+	// Perform the updateMany operation
+	result, err := questionCollection.UpdateMany(context.Background(), filter, update)
+	if err != nil {
+		fmt.Println("Error updating documents:", err)
+		return
+	}
+
+	// Print the number of documents updated
+	fmt.Printf("Updated %v documents\n", result.ModifiedCount)
+}
+func Questions(num int,subject []string) []models.Question{
+	
+
+	// Encode string array to BSON
+	
+	
+	
+	ctx := context.Background()
+	pipeline:=bson.A{
+		bson.D{{"$match", bson.D{{"usedby", bson.D{{"$ne", "9517415732"}}}}}},
+		bson.D{
+			{"$match",
+				bson.D{
+					{"subject_tags",
+						bson.D{
+							{"$in",
+								subject,
+							},
+						},
+					},
+				},
+			},
+		},
+		bson.D{
+			{"$group",
+				bson.D{
+					{"_id",
+						bson.A{
+							"$type",
+						},
+					},
+					{"questions", bson.D{{"$push", "$$ROOT"}}},
+				},
+			},
+		},
+		bson.D{
+			{"$match",
+				bson.D{
+					{"$or",
+						bson.A{
+							bson.D{{"_id", "Single Correct"}},
+							bson.D{{"_id", "Multiple Choice"}},
+							bson.D{{"_id", "Numerical Answer"}},
+						},
+					},
+				},
+			},
+		},
+		bson.D{
+			{"$project",
+				bson.D{
+					{"questions",
+						bson.D{
+							{"$slice",
+								bson.A{
+									"$questions",
+									num,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		bson.D{{"$unwind", "$questions"}},
+		bson.D{{"$replaceRoot", bson.D{{"newRoot", "$questions"}}}},
+	}
+	cursor, err := questionCollection.Aggregate(context.Background(), pipeline)
+		if err != nil {
+			//http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
+			//return
+		}
+		defer cursor.Close(ctx)
+		var questions []models.Question
+	for cursor.Next(ctx) {
+		var result models.Question
+		err := cursor.Decode(&result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		questions = append(questions, result)
+	}
+		// Check for errors from iterating over cursor
+		if err := cursor.Err(); err != nil {
+			log.Fatal(err)
+		}
+return questions
+}
+func DistinctSubject_tags(){
+
+	
+
+	
+//fmt.Println("called")
+	
+    ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
+	//valuesToSearch := []string{"mathematics","Mathematics"}
+	//cursor,err:=questionCollection.Find(ctx,bson.M{"subject_tags":bson.M{"$in": valuesToSearch}})
+	cursor,err:=questionCollection.Find(ctx,bson.M{})
+    defer cursor.Close(ctx)
+	if err !=nil{
+
+		
+	}
+	var questions []models.Question
+	if err =cursor.All(ctx,&questions);err!=nil{
+		
+	}
+    // fmt.Println(questions)
+	 
+	var str [] string
+	for i:=0;i<len(questions);i++{
+
+       var temp=questions[i].Subject_Tags
+	   for j:=0;j<len(temp);j++{
+        t:=false
+		for k:=0;k<len(str);k++{
+
+               if(temp[j]==str[k]){
+				t=true;
+			   }
+		}
+		if(!t){
+			str = append(str, temp[j])
+		}
+	   }
+	}
+	for i:=0;i<len(str);i++{
+
+		fmt.Println(str[i])
+	}
+	
+
 }
 
 func CreateQPaper(w http.ResponseWriter, r *http.Request) {

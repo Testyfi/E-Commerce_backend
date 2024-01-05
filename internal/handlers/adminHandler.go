@@ -244,7 +244,7 @@ func GetAllTestDetails(w http.ResponseWriter, r *http.Request){
 		return
 	}
     
-	 fmt.Println(papers)
+	 //fmt.Println(papers)
 	httpClient.RespondSuccess(w, papers)
 
 

@@ -95,6 +95,16 @@ func main() {
 		r.Post("/livetest/totaluser", handlers.TotalUsers)
 		r.Post("/livetest/incrementuser", handlers.IncrementUser)
 	})
+	r.Route("/statistics", func(r chi.Router) {
+
+		r.Use(handlers.AuthenticationMiddleware)
+		r.Post("/userstatistics", handlers.UserStatistics)
+	})
+	r.Route("/test", func(r chi.Router) {
+
+		r.Use(handlers.AuthenticationMiddleware)
+		r.Post("/createyourtest", handlers.CreateYourTest)
+	})
 	
 
 	// Start the server

@@ -361,7 +361,7 @@ func FindUserTotalNumber(testname string, User models.User)int {
 if err =cursor.All(ctx,&user);err!=nil{
 			fmt.Println(err)
 		}
-		fmt.Println(user[0].TotalNumber)
+		//fmt.Println(user[0].TotalNumber)
 	return user[0].TotalNumber
 
 }
