@@ -17,7 +17,7 @@ func getDefaultPayRedirectUrl() string {
 }
 
 func getDefaultPayCallbackUrl() string {
-	return "https://webhook.site/callback-url"
+	return "https://webhook.site/369b0c9d-2c52-4db4-8a26-9a942c882990"
 }
 
 func generatePayRequestSignature(payload []byte) (finalRequestBody, string, error) {
