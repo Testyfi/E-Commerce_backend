@@ -29,12 +29,15 @@ func GetPaymentRequestUrl(w http.ResponseWriter, r *http.Request) {
 		httpClient.RespondError(w, http.StatusBadRequest, "Failed to retrieve user", fmt.Errorf("failed to retrieve user"))
 		return
 	}
-
+   red:="https://testtify.com/checkoutpage"
+   callback:="https://webhook.site/369b0c9d-2c52-4db4-8a26-9a942c882990"
 	payload := payrequest.TransactionRequest{
 		UID:           user.User_id,
 		Amount:        p.Amount * 100,
 		MobileNumber:  *user.Phone,
 		TransactionID: fmt.Sprintf("ph#%s%s%d", user.User_id[:5], *user.Phone, time.Now().Unix()),
+		RedirectURL: &red,
+		CallbackURL: &callback,
 	}
 
 	transaction, err := payrequest.PayRequest(payload)
