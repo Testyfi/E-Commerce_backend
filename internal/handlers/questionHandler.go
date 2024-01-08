@@ -958,9 +958,9 @@ func FindAllCreatedTest(w http.ResponseWriter, r *http.Request){
 	
 	//defer client.Disconnect(ctx)
 	filter := bson.D{{"userphone", *user.Phone}}
-
+	options := options.Find().SetSort(bson.D{{"_id", -1}})
 	// Find questions in the collection with the specified filter
-	cursor, err := qpaperCollection.Find(ctx, filter)
+	cursor, err := qpaperCollection.Find(ctx, filter,options)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -971,7 +971,7 @@ func FindAllCreatedTest(w http.ResponseWriter, r *http.Request){
 	if err := cursor.All(ctx, &qp); err != nil {
 		log.Fatal(err)
 	}
-
+    
 	httpClient.RespondSuccess(w, qp)
 }
 func FindCreatedTestQuestions(w http.ResponseWriter, r *http.Request){
