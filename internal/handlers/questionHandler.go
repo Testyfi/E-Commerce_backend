@@ -702,6 +702,56 @@ var Topics = []string{
 type CreateQPaperHelper struct {
 	Questions []int `json:"questions"`
 }
+func CreateYourQPaperDataBase(w http.ResponseWriter, r *http.Request){
+	user, ok := r.Context().Value(models.ContextUser).(models.User)
+
+	if !ok {
+		httpClient.RespondError(w, http.StatusBadRequest, "Failed to retrieve user", fmt.Errorf("failed to retrieve user"))
+		fmt.Println("some error on user fething statics")
+		return 
+	}
+	var t struct {
+		
+		Difficulty string `json:"difficulty"`
+		Duration string `json:"duration"`
+		QuestionId []string `json:"questionid"`
+
+	}
+
+
+	err := json.NewDecoder(r.Body).Decode(&t)
+	//fmt.Println(t)
+
+	if err != nil {
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid test or user", err)
+		return
+	}
+	var qpaper models.QPaper
+	qpaper.ID = primitive.NewObjectID()
+	qpaper.Qpid = qpaper.ID.Hex()
+    qpaper.Difficulty=t.Difficulty
+	qpaper.Duration=t.Duration
+	qpaper.UserPhone=*user.Phone
+	qpaper.Name="Create Your Test "+strconv.Itoa(TotalCreatedTest(*user.Phone)+1)
+    qpaper.Questions=t.QuestionId
+	qpaperCollection.InsertOne(context.Background(),qpaper)
+	httpClient.RespondSuccess(w, "Success")
+}
+func TotalCreatedTest(phone string)int {
+
+
+	filter := bson.D{{"userphone", phone}}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	
+	
+	// Count the documents in the collection with the specified filter
+	totalDocuments, err := qpaperCollection.CountDocuments(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return int(totalDocuments)
+}
 func CreateYourTestAdvanced(w http.ResponseWriter, r *http.Request){
 	//DistinctSubject_tags()
 	//UpdateQuestionCollection()
@@ -731,6 +781,7 @@ func CreateYourTestAdvanced(w http.ResponseWriter, r *http.Request){
 	//questions=
 	httpClient.RespondSuccess(w, questions)
 	
+
 	for i:=0;i<len(questions);i++{
 
 		addusedby(*user.Phone,questions[i])
@@ -761,6 +812,7 @@ filter := bson.D{{"q_id", question.Q_id}}
 	// Print the number of documents updated
 	fmt.Printf("Updated %v documents\n", result.ModifiedCount)
 }
+
 func UpdateQuestionCollection(){
      //valueTobeupdated:=[]string{"permutation and combination"}
 	filter := bson.D{{"subject_tags", "permutation and combination"}}
@@ -888,6 +940,79 @@ func Questions(num int,subject []string,phone string) []models.Question{
 			log.Fatal(err)
 		}
 return questions
+}
+func FindAllCreatedTest(w http.ResponseWriter, r *http.Request){
+
+
+	user, ok := r.Context().Value(models.ContextUser).(models.User)
+
+	if !ok {
+		httpClient.RespondError(w, http.StatusBadRequest, "Failed to retrieve user", fmt.Errorf("failed to retrieve user"))
+		fmt.Println("some error on user fething statics")
+		return 
+	}
+	//var allcreatedtest []models.QPaper
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	//err = client.Connect(ctx)
+	
+	//defer client.Disconnect(ctx)
+	filter := bson.D{{"userphone", *user.Phone}}
+
+	// Find questions in the collection with the specified filter
+	cursor, err := qpaperCollection.Find(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cursor.Close(ctx)
+
+	// Iterate through the result set and print each question
+	var qp []models.QPaper
+	if err := cursor.All(ctx, &qp); err != nil {
+		log.Fatal(err)
+	}
+
+	httpClient.RespondSuccess(w, qp)
+}
+func FindCreatedTestQuestions(w http.ResponseWriter, r *http.Request){
+
+
+	var t struct {
+		
+		
+		Questions []string `json:"questions"`
+	}
+
+
+	err := json.NewDecoder(r.Body).Decode(&t)
+	//fmt.Println(t)
+
+	if err != nil {
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid test or user", err)
+		return
+	}
+	//var allcreatedtest []models.QPaper
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	//err = client.Connect(ctx)
+	
+	//defer client.Disconnect(ctx)
+	filter := bson.D{{"q_id", bson.D{{"$in", t.Questions}}}}
+
+	// Find questions in the collection with the specified filter
+	cursor, err :=questionCollection.Find(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cursor.Close(ctx)
+
+	// Iterate through the result set and print each question
+	var qp []models.Question
+	if err := cursor.All(ctx, &qp); err != nil {
+		log.Fatal(err)
+	}
+
+	httpClient.RespondSuccess(w, qp)
 }
 func CreateYourTestJeeMains(w http.ResponseWriter, r *http.Request){
 
@@ -1025,7 +1150,7 @@ func DistinctSubject_tags(){
 	
 
 }
-
+/*
 func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 	userId := chi.URLParam(r, "user_id")
 	var qpaper models.QPaper
@@ -1152,3 +1277,5 @@ func CreateQPaper(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result.InsertedID)
 }
+*/
+

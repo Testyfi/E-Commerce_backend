@@ -28,7 +28,11 @@ type Question struct {
 }
 
 type QPaper struct {
+	Name string        `json:"name"`
+	Difficulty string  `json:difficulty`
+	Duration  string   `json:duration`
 	ID        primitive.ObjectID `bson:"_id"`
 	Qpid      string             `json:"qpid"`
 	Questions []string           `json:"questions"`
+	UserPhone string             `json:"userphone"`
 }
