@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -60,7 +60,7 @@ func HashPassword(password string) string {
 	if err != nil {
 		log.Panic(err)
 	}
-
+    
 	return string(bytes)
 }
 
@@ -97,7 +97,7 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 	user.Password = &password
 
 	// Checking if user already exists
-	alreadyExists, err := userCollection.CountDocuments(context.Background(), bson.M{"email": user.Email})
+	alreadyExists, err := userCollection.CountDocuments(context.Background(), bson.M{"phone": user.Phone})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -115,13 +115,13 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 	user.Profile = "https://static.vecteezy.com/system/resources/previews/005/544/718/original/profile-icon-design-free-vector.jpg"
 	user.Purchased = false
 	user.Verified = false
-	token, refreshToken, _ := utility.GenerateAllTokens(*user.Email, *user.First_name, *user.Last_name, user.User_id)
+	token, refreshToken, _ := utility.GenerateAllTokens( *user.First_name, *user.Last_name, user.User_id)
 	user.Token = &token
 	user.Refresh_token = &refreshToken
 	user.Wallet = 0
 
 	var otp models.OTP
-	err = otpcollection.FindOne(context.Background(), bson.M{"email": user.Email}).Decode(&otp)
+	err = otpcollection.FindOne(context.Background(), bson.M{"phone": user.Phone}).Decode(&otp)
 	if err != nil {
 		http.Error(w, "Invalid OTP", http.StatusUnauthorized)
 		return
@@ -160,8 +160,7 @@ func UserVerification(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		println(result)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Verified Successfully! Please Login now."))
+		httpClient.RespondSuccess(w, "Verification Success.Please Login now")
 		return
 	}
 
@@ -177,17 +176,9 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Checking if user already exists
-	alreadyExists, err := userCollection.CountDocuments(context.Background(), bson.M{"email": otp.Email})
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	if alreadyExists > 0 {
-		http.Error(w, "User already exists!", http.StatusConflict)
-		return
-	}
+	
 	// Checking if phone already exists
-	alreadyExists, err = userCollection.CountDocuments(context.Background(), bson.M{"phone": otp.Phone})
+	alreadyExists, err := userCollection.CountDocuments(context.Background(), bson.M{"phone": otp.Phone})
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -197,7 +188,8 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	alreadyExists, err = otpcollection.CountDocuments(context.Background(), bson.M{"email": otp.Email})
+	alreadyExists, err = otpcollection.CountDocuments(context.Background(), bson.M{"phone": otp.Phone})
+	fmt.Println(alreadyExists)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -207,10 +199,10 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	otp.SecretCode = utility.GenerateRandomCode()
+	//otp.SecretCode = utility.GenerateRandomCode()
 	otp.Otp = utility.GenerateRandomCode()
-	verificationLink := fmt.Sprintf("Your OTP for Email verification is %s", otp.SecretCode)
-	err = utility.SendMail(verificationLink, *otp.Email, "Email Verification")
+	//verificationLink := fmt.Sprintf("Your OTP for Email verification is %s", otp.SecretCode)
+	//err = utility.SendMail(verificationLink, *otp.Email, "Email Verification")
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -244,7 +236,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	err := userCollection.FindOne(context.Background(), bson.M{"email": user.Email}).Decode(&foundUser)
+	err := userCollection.FindOne(context.Background(), bson.M{"phone": user.Phone}).Decode(&foundUser)
 	if err != nil {
 		http.Error(w, "Email or Password is incorrect", http.StatusUnauthorized)
 		return
@@ -254,14 +246,9 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusUnauthorized)
 		return
 	}
-	if foundUser.Verified == false {
-		verificationLink := fmt.Sprint(os.Getenv("BACKEND_URL") + "/userverify" + "?user_id=" + foundUser.User_id + "&secret=" + foundUser.SecretCode)
-		utility.SendMail("click on this link to verify your email. "+verificationLink, *user.Email, "Email Verification")
-		http.Error(w, "Email not verified. Verification Link has been sent to your email. Please verify it.", http.StatusForbidden)
-		return
-	}
+	
 
-	token, refreshToken, _ := utility.GenerateAllTokens(*foundUser.Email, *foundUser.First_name, *foundUser.Last_name, foundUser.User_id)
+	token, refreshToken, _ := utility.GenerateAllTokens( *foundUser.First_name, *foundUser.Last_name, foundUser.User_id)
 	utility.UpdateAllTokens(token, refreshToken, foundUser.User_id)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -270,7 +257,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		User_ID:        foundUser.User_id,
 		FirstName:      *foundUser.First_name,
 		LastName:       *foundUser.Last_name,
-		Email:          *foundUser.Email,
+		
 		Phone:          *foundUser.Phone,
 		ProfilePicture: foundUser.Profile,
 		Wallet:         foundUser.Wallet,
@@ -596,7 +583,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	type ForgotPass struct {
-		Email string `json:"email"`
+		Phone string `json:"phone"`
 	}
 
 	var helper ForgotPass
@@ -606,14 +593,31 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
     
-	err := userCollection.FindOne(context.Background(), bson.M{"email": helper.Email}).Decode(&user)
+	err := userCollection.FindOne(context.Background(), bson.M{"phone": helper.Phone}).Decode(&user)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	//fmt.Println(user)
+	str:=generateRandomString(8)
+	newPass := HashPassword(str)
+	user.Password = &newPass
 
+	result, err := userCollection.UpdateOne(context.Background(), bson.M{"phone": user.Phone}, bson.M{"$set": bson.M{
+		"password": user.Password,
+	}})
+	if err != nil {
+		//fmt.Println("some error")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println(err)
+		fmt.Fprintf(w, "Error Resetting Password. Please try again later")
+		return
+	}
+	utility.SMS("163562", []string{*user.First_name, str}, []string{*user.Phone})
+	fmt.Println(result)
+
+	//fmt.Println(user)
+/*
 	user.ResetCode = utility.GenerateRandomCode()
 	result, err := userCollection.UpdateOne(context.Background(), bson.M{"user_id": user.User_id}, bson.M{"$set": bson.M{
 		"resetcode": user.ResetCode,
@@ -636,6 +640,26 @@ func ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//fmt.Println("Working")
-	httpClient.RespondSuccess(w, "Password Reset Link has been sent to your email.Please also check your spam box")
+	*/
+	httpClient.RespondSuccess(w, "Your new password has been successfully sent to your mobile. Please check")
 	//w.Write([]byte("Password Reset Link has been sent to your email."))
+}
+const (
+	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	digitBytes  = "0123456789"
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func generateRandomString(length int) string {
+	allBytes := letterBytes + digitBytes
+	result := make([]byte, length)
+
+	for i := range result {
+		result[i] = allBytes[rand.Intn(len(allBytes))]
+	}
+
+	return string(result)
 }
