@@ -3,12 +3,17 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"testify/internal/models"
 	"testify/internal/payment/phonepay/payrequest"
 	httpClient "testify/internal/utility/http"
 	"time"
 )
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 
 func GetPaymentRequestUrl(w http.ResponseWriter, r *http.Request) {
 
@@ -34,8 +39,8 @@ func GetPaymentRequestUrl(w http.ResponseWriter, r *http.Request) {
 		UID:           user.User_id,
 		Amount:        p.Amount * 100,
 		MobileNumber:  *user.Phone,
-		TransactionID: fmt.Sprintf("ph#%s%s%d", user.User_id[:5], *user.Phone, time.Now().Unix()),
-		
+		//TransactionID: fmt.Sprintf("ph#%s%s%d", user.User_id[:5], *user.Phone, time.Now().Unix()),
+		TransactionID: generateRandomString(15),
 	}
 
 	transaction, err := payrequest.PayRequest(payload)
