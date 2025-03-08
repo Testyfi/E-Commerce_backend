@@ -15,9 +15,9 @@ import (
 // MongoDB configurations
 const (
 	mongoURI          = "mongodb://localhost:27017"
-	databaseName      = "testify"
+	databaseName      = "bluebeardatabase"
 	usersCollName     = "users"
-	questionsCollName = "questions"
+	questionsCollName = "tshirts"
 )
 
 // DBinstance func
@@ -53,7 +53,7 @@ var Client *mongo.Client = DBinstance()
 // OpenCollection is a  function makes a connection with a collection in the database
 func OpenCollection(client *mongo.Client, collectionName string) *mongo.Collection {
 
-	var collection *mongo.Collection = client.Database("testify").Collection(collectionName)
+	var collection *mongo.Collection = client.Database("bluebeardatabase").Collection(collectionName)
 
 	return collection
 }

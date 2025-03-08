@@ -39,6 +39,7 @@ func main() {
 
 	// User Routes
 	r.Post("/userlogin", handlers.Login)
+	r.Post("/servercallback", handlers.ServerCallBack)
 	r.Post("/usersignup", handlers.SignUp)
 	r.Post("/userverify", handlers.UserVerification)
 	r.Post("/forgotpass", handlers.ForgotPassword)

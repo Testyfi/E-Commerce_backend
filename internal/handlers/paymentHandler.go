@@ -40,7 +40,7 @@ func GetPaymentRequestUrl(w http.ResponseWriter, r *http.Request) {
 		Amount:        p.Amount * 100,
 		MobileNumber:  *user.Phone,
 		//TransactionID: fmt.Sprintf("ph#%s%s%d", user.User_id[:5], *user.Phone, time.Now().Unix()),
-		TransactionID: generateRandomString(15),
+		TransactionID: *user.Phone+generateRandomString(15),
 	}
 
 	transaction, err := payrequest.PayRequest(payload)

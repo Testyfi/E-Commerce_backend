@@ -26,6 +26,10 @@ type User struct {
 	ReferralCode   string                       `json:"referral_code"`
 	Wallet         int                          `json:"wallet"`
 	Purchased      bool                         `json:"purchased"`
+	PurchaseDate   time.Time                    `json:"purchasedate"`
+	PurchasePlan   int                          `json:"purchaseplane"`
+	RankBoosterTest int                         `json:"rankboostertest"`
+	CreateYourTest  int                         `json:"createyourtest"`
 	Verified       bool                         `json:"verified"`
 	ResetCode      string                       `json:"reset_code"`
 	SecretCode     string                       `json:"secret_code"`
