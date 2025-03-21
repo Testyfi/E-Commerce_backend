@@ -27,13 +27,13 @@ func UploadTshirtPictures(){
 		log.Fatal("Error loading .env file")
 	}
 
-    bucketName := os.Getenv("bucketName")
-	region:=os.Getenv("region")
-    r2Endpoint:=os.Getenv("r2Endpoint")
-	accessKey:=os.Getenv("accessKey")
-    secretKey:=os.Getenv("secretKey")
-	imagePath:=os.Getenv("imagePath")
-	imageKey:=os.Getenv("imageKey")
+    bucketName := os.Getenv("BUCKET_NAME")
+	region:=os.Getenv("REGION")
+    r2Endpoint:=os.Getenv("R2_ENDPOINT")
+	accessKey:=os.Getenv("ACCESS_KEY")
+    secretKey:=os.Getenv("SECRET_KEY")
+	imagePath:=os.Getenv("IMAGE_PATH")
+	imageKey:=os.Getenv("IMAGE_KEY")
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),

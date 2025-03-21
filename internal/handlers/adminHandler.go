@@ -24,7 +24,7 @@ type Data struct {
 	AdminName string `json:"adminName"`
 }
 
-var adminCollection *mongo.Collection = database.OpenCollection(database.Client, "admin")
+var adminCollection *mongo.Collection = database.OpenCollection(database.Client, "admins")
 
 func GetAdmins(w http.ResponseWriter, r *http.Request) {
 	pageSize, err := strconv.Atoi(r.URL.Query().Get("pageSize"))
@@ -84,21 +84,22 @@ func GetAdmins(w http.ResponseWriter, r *http.Request) {
 
 func CreateAdmin(w http.ResponseWriter, r *http.Request) {
 	var admin models.Admin
-
+    
 	if err := json.NewDecoder(r.Body).Decode(&admin); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		print(err.Error())
 		return
 	}
-
+    
 	// Password Hashing
 	password := HashPassword(*admin.Password)
 	admin.Password = &password
 
 	// Checking if admin already exists
-	alreadyExists, err := adminCollection.CountDocuments(context.Background(), bson.M{"email": admin.Email})
+	alreadyExists, err := adminCollection.CountDocuments(context.Background(), bson.M{"email": *admin.Email})
 
 	if err != nil {
+		print(err.Error())
 		http.Error(w, "Internal Server Error"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -133,12 +134,13 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 	var foundAdmin models.Admin
 	var admin models.Admin
 	if err := json.NewDecoder(r.Body).Decode(&admin); err != nil {
+		//println("yes")
 		http.Error(w, "Interal Server Error "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+    //println(*admin.Email)
 	err := adminCollection.FindOne(context.Background(), bson.M{"email": admin.Email}).Decode(&foundAdmin)
-
+    //println(err.Error())
 	if err != nil {
 		http.Error(w, "Email or Password is incorrect", http.StatusUnauthorized)
 		return
@@ -160,6 +162,7 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonResp, err := json.Marshal(data)
 	if err != nil {
+		
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

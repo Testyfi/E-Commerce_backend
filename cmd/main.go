@@ -18,6 +18,7 @@ func main() {
 	err := godotenv.Load(".env")
 
 	if err != nil {
+	    println(err)
 		log.Fatal("Error loading .env file")
 	}
 
@@ -67,6 +68,11 @@ func main() {
 		r.Delete("/{id}", handlers.DeleteQuestion)
 		r.Post("/delete", handlers.DeleteMany)
 		r.Post("/upload", handlers.UploadCSV)
+	})
+	r.Route("/products", func(r chi.Router) {
+		r.Use(handlers.AuthenticationMiddleware)
+		r.Post("/", handlers.AddProduct)
+		
 	})
 
 	r.Post("/adminlogin", handlers.AdminLogin)

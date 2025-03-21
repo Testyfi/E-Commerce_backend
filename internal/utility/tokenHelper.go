@@ -32,7 +32,7 @@ type SignedAdminDetails struct {
 
 var SECRET_KEY string = os.Getenv("SECRET_KEY")
 var userCollection *mongo.Collection = database.OpenCollection(database.Client, "user")
-var adminCollection *mongo.Collection = database.OpenCollection(database.Client, "admin")
+var adminCollection *mongo.Collection = database.OpenCollection(database.Client, "admins")
 
 func GenerateAllTokens( firstName string, lastName string, uid string) (signedToken string, signedRefreshToken string, err error) {
 	claims := &SignedDetails{
