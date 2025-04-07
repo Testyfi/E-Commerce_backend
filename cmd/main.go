@@ -39,6 +39,7 @@ func main() {
 	}))
 
 	// User Routes
+	r.Post("/getproducts", handlers.GetProductByFilter)
 	r.Post("/userlogin", handlers.Login)
 	r.Post("/servercallback", handlers.ServerCallBack)
 	r.Post("/usersignup", handlers.SignUp)
@@ -72,7 +73,7 @@ func main() {
 	r.Route("/products", func(r chi.Router) {
 		r.Use(handlers.AuthenticationMiddleware)
 		r.Post("/", handlers.AddProduct)
-		
+	
 	})
 
 	r.Post("/adminlogin", handlers.AdminLogin)
