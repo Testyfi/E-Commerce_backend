@@ -9,6 +9,7 @@ import (
 	database "testify/database"
 	models "testify/internal/models"
 	utility "testify/internal/utility"
+	httpClient "testify/internal/utility/http"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -95,7 +96,38 @@ func GetProducts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+func GetProductByFilter(w http.ResponseWriter, r *http.Request){
 
+
+	var t struct {
+		Data string `json:"Data"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&t)
+     //fmt.Println(t.Data)
+	if err != nil {
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+		return
+	}
+    ctx,_:=context.WithTimeout(context.Background(),10*time.Second)
+	cursor,err:=productsCollection.Find(ctx,bson.M{"product_tags":t.Data,
+    "marks": bson.M{"$gt": 4.5},})
+    defer cursor.Close(ctx)
+	if err !=nil{
+
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+		return
+	}
+	var products []bson.M
+	if err =cursor.All(ctx,&products);err!=nil{
+		httpClient.RespondError(w, http.StatusBadRequest, "Please send a valid tag", err)
+		return
+	}
+    // fmt.Println(questions)
+	 
+	httpClient.RespondSuccess(w, products)
+
+}
 func AddProduct(w http.ResponseWriter, r *http.Request) {
 	var product models.Product
 

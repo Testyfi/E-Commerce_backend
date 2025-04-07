@@ -19,6 +19,7 @@ type Product struct {
 	Lar            int                `json:"lar"`
 	Xl            int                `json:"xl"`
     Mrp            int                `json:"mrp"`
+	Marks         int                 `json:"marks"`
 	Price            int                `json:"price"`
 }
 
